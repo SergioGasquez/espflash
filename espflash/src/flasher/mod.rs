@@ -826,7 +826,10 @@ impl Flasher {
         // The ROM code thinks it uses a 40 MHz XTAL. Recompute the baud rate in order
         // to trick the ROM code to set the correct baud rate for a 26 MHz XTAL.
         let mut new_baud = speed;
-        if self.chip == Chip::Esp32c2 && !self.use_stub && xtal_freq == 26 {
+        if (self.chip == Chip::Esp32c2 || self.chip == Chip::Esp32)
+            && !self.use_stub
+            && xtal_freq == 26
+        {
             new_baud = new_baud * 40 / 26;
         }
 

@@ -257,7 +257,7 @@ pub fn serial_monitor(args: MonitorArgs, config: &Config) -> Result<()> {
     let target = chip.into_target();
 
     // The 26MHz ESP32-C2's need to be treated as a special case.
-    let default_baud = if chip == Chip::Esp32c2
+    let default_baud = if (chip == Chip::Esp32c2 || chip == Chip::Esp32)
         && args.connect_args.no_stub
         && target.crystal_freq(flasher.connection())? == 26
     {
