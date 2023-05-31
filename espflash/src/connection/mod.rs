@@ -10,6 +10,8 @@ use binread::{io::Cursor, BinRead, BinReaderExt};
 use serialport::UsbPortInfo;
 use slip_codec::SlipDecoder;
 
+#[cfg(unix)]
+use self::reset::UnixTightReset;
 use self::{
     encoder::SlipEncoder,
     reset::{construct_reset_strategy_sequence, ClassicReset, ResetStrategy, UsbJtagSerialReset},
@@ -20,7 +22,7 @@ use crate::{
     interface::Interface,
 };
 
-pub mod reset;
+mod reset;
 
 const MAX_CONNECT_ATTEMPTS: usize = 7;
 const MAX_SYNC_ATTEMPTS: usize = 5;
@@ -130,6 +132,14 @@ impl Connection {
         if self.port_info.pid == USB_SERIAL_JTAG_PID {
             UsbJtagSerialReset.reset(&mut self.serial)
         } else {
+            #[cfg(unix)]
+            if UnixTightReset::new(extra_delay)
+                .reset(&mut self.serial)
+                .is_ok()
+            {
+                return Ok(());
+            }
+
             ClassicReset::new(extra_delay).reset(&mut self.serial)
         }
     }
