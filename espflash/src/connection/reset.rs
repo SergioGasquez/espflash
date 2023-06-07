@@ -14,7 +14,7 @@ use crate::{connection::USB_SERIAL_JTAG_PID, error::Error, interface::Interface}
 /// Default time to wait before releasing the boot pin after a reset
 const DEFAULT_RESET_DELAY: u64 = 50; // ms
 /// Amount of time to wait if the default reset delay does not work
-const EXTRA_RESET_DELAY: u64 = 550; // ms
+const EXTRA_RESET_DELAY: u64 = 500; // ms
 
 #[cfg(unix)]
 mod syscalls {
@@ -94,6 +94,11 @@ impl ResetStrategy for ClassicReset {
             "Using Classic reset strategy with delay of {}ms",
             self.delay
         );
+        self.set_dtr(interface, false)?;
+        self.set_rts(interface, false)?;
+
+        self.set_dtr(interface, true)?;
+        self.set_rts(interface, true)?;
 
         self.set_dtr(interface, false)?; // IO0 = HIGH
         self.set_rts(interface, true)?; // EN = LOW, chip in reset
