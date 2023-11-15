@@ -503,52 +503,10 @@ pub fn erase_region(args: EraseRegionArgs, config: &Config) -> Result<()> {
 }
 
 /// Write an ELF image to a target device's flash
-#[deprecated(
-    since = "3.0.0",
-    note = "Please use `flash_elf_image_with_config` instead"
-)]
-pub fn flash_elf_image(
-    flasher: &mut Flasher,
-    elf_data: &[u8],
-    bootloader: Option<&Path>,
-    partition_table: Option<PartitionTable>,
-    image_format: Option<ImageFormatKind>,
-    flash_mode: Option<FlashMode>,
-    flash_size: Option<FlashSize>,
-    flash_freq: Option<FlashFrequency>,
-) -> Result<()> {
-    // If the '--bootloader' option is provided, load the binary file at the
-    // specified path.
-    let bootloader = if let Some(path) = bootloader {
-        let path = fs::canonicalize(path).into_diagnostic()?;
-        let data = fs::read(path).into_diagnostic()?;
-
-        Some(data)
-    } else {
-        None
-    };
-
+pub fn flash_elf_image(flasher: &mut Flasher, config: FlashConfig) -> Result<()> {
     // Load the ELF data, optionally using the provider bootloader/partition
     // table/image format, to the device's flash memory.
-    flasher.load_elf_to_flash_with_format(
-        elf_data,
-        bootloader,
-        partition_table,
-        image_format,
-        flash_mode,
-        flash_size,
-        flash_freq,
-        Some(&mut EspflashProgress::default()),
-    )?;
-    info!("Flashing has completed!");
-
-    Ok(())
-}
-
-pub fn flash_elf_image_with_config(flasher: &mut Flasher, config: FlashConfig) -> Result<()> {
-    // Load the ELF data, optionally using the provider bootloader/partition
-    // table/image format, to the device's flash memory.
-    flasher.load_elf_to_flash_with_config(config, Some(&mut EspflashProgress::default()))?;
+    flasher.load_elf_to_flash(config, Some(&mut EspflashProgress::default()))?;
     info!("Flashing has completed!");
 
     Ok(())

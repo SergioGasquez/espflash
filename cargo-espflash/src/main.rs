@@ -9,10 +9,10 @@ use clap::{Args, CommandFactory, Parser, Subcommand};
 use espflash::{
     cli::{
         self, board_info, completions, config::Config, connect, erase_flash, erase_partitions,
-        erase_region, flash_elf_image_with_config, monitor::monitor, parse_partition_table,
-        partition_table, print_board_info, save_elf_as_image, serial_monitor, CompletionsArgs,
-        ConnectArgs, EraseFlashArgs, EraseRegionArgs, EspflashProgress, FlashConfigArgs,
-        MonitorArgs, PartitionTableArgs,
+        erase_region, flash_elf_image, monitor::monitor, parse_partition_table, partition_table,
+        print_board_info, save_elf_as_image, serial_monitor, CompletionsArgs, ConnectArgs,
+        EraseFlashArgs, EraseRegionArgs, EspflashProgress, FlashConfigArgs, MonitorArgs,
+        PartitionTableArgs,
     },
     error::Error as EspflashError,
     flasher::FlashConfig,
@@ -328,7 +328,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             args.build_args.flash_config_args.flash_size,
             args.build_args.flash_config_args.flash_freq,
         )?;
-        flash_elf_image_with_config(&mut flasher, flash_config)?;
+        flash_elf_image(&mut flasher, flash_config)?;
     }
 
     if args.flash_args.monitor {
