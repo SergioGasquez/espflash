@@ -28,7 +28,7 @@ use self::{config::Config, monitor::monitor, serial::get_serial_port_info};
 use crate::{
     elf::ElfFirmwareImage,
     error::{Error, MissingPartition, MissingPartitionTable},
-    flasher::{FlashFrequency, FlashMode, FlashSize, Flasher, ProgressCallbacks},
+    flasher::{FlashConfig, FlashFrequency, FlashMode, FlashSize, Flasher, ProgressCallbacks},
     image_format::ImageFormatKind,
     interface::Interface,
     targets::Chip,
@@ -503,6 +503,10 @@ pub fn erase_region(args: EraseRegionArgs, config: &Config) -> Result<()> {
 }
 
 /// Write an ELF image to a target device's flash
+#[deprecated(
+    since = "3.0.0",
+    note = "Please use `flash_elf_image_with_config` instead"
+)]
 pub fn flash_elf_image(
     flasher: &mut Flasher,
     elf_data: &[u8],
@@ -536,6 +540,15 @@ pub fn flash_elf_image(
         flash_freq,
         Some(&mut EspflashProgress::default()),
     )?;
+    info!("Flashing has completed!");
+
+    Ok(())
+}
+
+pub fn flash_elf_image_with_config(flasher: &mut Flasher, config: FlashConfig) -> Result<()> {
+    // Load the ELF data, optionally using the provider bootloader/partition
+    // table/image format, to the device's flash memory.
+    flasher.load_elf_to_flash_with_config(config, Some(&mut EspflashProgress::default()))?;
     info!("Flashing has completed!");
 
     Ok(())

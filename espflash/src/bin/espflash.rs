@@ -8,12 +8,13 @@ use clap::{Args, CommandFactory, Parser, Subcommand};
 use espflash::{
     cli::{
         self, board_info, completions, config::Config, connect, erase_flash, erase_partitions,
-        erase_region, flash_elf_image, monitor::monitor, parse_partition_table, parse_uint32,
-        partition_table, print_board_info, save_elf_as_image, serial_monitor, CompletionsArgs,
-        ConnectArgs, EraseFlashArgs, EraseRegionArgs, EspflashProgress, FlashConfigArgs,
-        MonitorArgs, PartitionTableArgs,
+        erase_region, flash_elf_image_with_config, monitor::monitor, parse_partition_table,
+        parse_uint32, partition_table, print_board_info, save_elf_as_image, serial_monitor,
+        CompletionsArgs, ConnectArgs, EraseFlashArgs, EraseRegionArgs, EspflashProgress,
+        FlashConfigArgs, MonitorArgs, PartitionTableArgs,
     },
     error::Error,
+    flasher::FlashConfig,
     image_format::ImageFormatKind,
     logging::initialize_logger,
     targets::Chip,
@@ -240,8 +241,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             )?;
         }
 
-        flash_elf_image(
-            &mut flasher,
+        let flash_config: FlashConfig = FlashConfig::new(
             &elf_data,
             bootloader,
             partition_table,
@@ -250,6 +250,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             args.flash_config_args.flash_size,
             args.flash_config_args.flash_freq,
         )?;
+        flash_elf_image_with_config(&mut flasher, flash_config)?;
     }
 
     if args.flash_args.monitor {
