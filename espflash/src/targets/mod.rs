@@ -27,9 +27,7 @@ use crate::{
     connection::Connection,
     elf::FirmwareImage,
     error::Error,
-    flasher::{
-        FlashFrequency, FlashSettings, SpiAttachParams, FLASH_WRITE_SIZE,
-    },
+    flasher::{FlashFrequency, FlashSettings, SpiAttachParams, FLASH_WRITE_SIZE},
     image_format::{ImageFormat, ImageFormatKind},
 };
 

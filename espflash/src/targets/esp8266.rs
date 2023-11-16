@@ -6,7 +6,7 @@ use crate::{
     connection::Connection,
     elf::FirmwareImage,
     error::{Error, UnsupportedImageFormatError},
-    flasher::{FlashSettings},
+    flasher::FlashSettings,
     image_format::{Esp8266Format, ImageFormat, ImageFormatKind},
     targets::{bytes_to_mac_addr, Chip, ReadEFuse, SpiRegisters, Target},
 };
