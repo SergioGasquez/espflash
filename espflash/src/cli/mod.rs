@@ -29,8 +29,7 @@ use crate::{
     elf::ElfFirmwareImage,
     error::{Error, MissingPartition, MissingPartitionTable},
     flasher::{
-        FlashConfig, FlashFrequency, FlashMode, FlashSettings, FlashSize, Flasher,
-        ProgressCallbacks,
+        FlashData, FlashFrequency, FlashMode, FlashSettings, FlashSize, Flasher, ProgressCallbacks,
     },
     image_format::ImageFormatKind,
     interface::Interface,
@@ -500,10 +499,10 @@ pub fn erase_region(args: EraseRegionArgs, config: &Config) -> Result<()> {
 }
 
 /// Write an ELF image to a target device's flash
-pub fn flash_elf_image(flasher: &mut Flasher, config: FlashConfig) -> Result<()> {
+pub fn flash_elf_image(flasher: &mut Flasher, flash_data: FlashData) -> Result<()> {
     // Load the ELF data, optionally using the provider bootloader/partition
     // table/image format, to the device's flash memory.
-    flasher.load_elf_to_flash(config, Some(&mut EspflashProgress::default()))?;
+    flasher.load_elf_to_flash(flash_data, Some(&mut EspflashProgress::default()))?;
     info!("Flashing has completed!");
 
     Ok(())

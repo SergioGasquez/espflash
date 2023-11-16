@@ -14,7 +14,7 @@ use espflash::{
         MonitorArgs, PartitionTableArgs,
     },
     error::Error,
-    flasher::{FlashConfig, FlashSettings},
+    flasher::{FlashData, FlashSettings},
     image_format::ImageFormatKind,
     logging::initialize_logger,
     targets::Chip,
@@ -247,7 +247,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             args.flash_config_args.flash_freq,
         );
 
-        let flash_config = FlashConfig::new(
+        let flash_config = FlashData::new(
             &elf_data,
             bootloader,
             partition_table,

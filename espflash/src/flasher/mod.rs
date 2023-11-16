@@ -404,7 +404,7 @@ pub trait ProgressCallbacks {
 /// Flash data and configuration
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct FlashConfig<'a> {
+pub struct FlashData<'a> {
     pub elf_data: &'a [u8],
     pub bootloader: Option<Vec<u8>>,
     pub partition_table: Option<PartitionTable>,
@@ -412,7 +412,7 @@ pub struct FlashConfig<'a> {
     pub flash_settings: FlashSettings,
 }
 
-impl<'a> FlashConfig<'a> {
+impl<'a> FlashData<'a> {
     pub fn new(
         elf_data: &'a [u8],
         bootloader: Option<&'a Path>,
@@ -431,7 +431,7 @@ impl<'a> FlashConfig<'a> {
             None
         };
 
-        Ok(FlashConfig {
+        Ok(FlashData {
             elf_data,
             bootloader,
             partition_table,
@@ -833,10 +833,10 @@ impl Flasher {
     /// Load an ELF image to flash and execute it
     pub fn load_elf_to_flash(
         &mut self,
-        config: FlashConfig,
+        flash_data: FlashData,
         mut progress: Option<&mut dyn ProgressCallbacks>,
     ) -> Result<(), Error> {
-        let image = ElfFirmwareImage::try_from(config.elf_data)?;
+        let image = ElfFirmwareImage::try_from(flash_data.elf_data)?;
 
         let mut target = self.chip.flash_target(self.spi_params, self.use_stub);
         target.begin(&mut self.connection).flashing()?;
@@ -853,16 +853,16 @@ impl Flasher {
             None
         };
         let flash_settings = FlashSettings::new(
-            config.flash_settings.mode,
-            config.flash_settings.size.or(Some(self.flash_size)),
-            config.flash_settings.freq,
+            flash_data.flash_settings.mode,
+            flash_data.flash_settings.size.or(Some(self.flash_size)),
+            flash_data.flash_settings.freq,
         );
 
         let image = self.chip.into_target().get_flash_image(
             &image,
-            config.bootloader,
-            config.partition_table,
-            config.image_format,
+            flash_data.bootloader,
+            flash_data.partition_table,
+            flash_data.image_format,
             chip_revision,
             flash_settings,
         )?;
