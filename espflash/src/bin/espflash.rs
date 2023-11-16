@@ -227,34 +227,30 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             println!("Partition table:   {}", path.display());
         }
 
-        let partition_table = match partition_table {
-            Some(path) => Some(parse_partition_table(path)?),
-            None => None,
-        };
-
-        if args.flash_args.erase_parts.is_some() || args.flash_args.erase_data_parts.is_some() {
-            erase_partitions(
-                &mut flasher,
-                partition_table.clone(),
-                args.flash_args.erase_parts,
-                args.flash_args.erase_data_parts,
-            )?;
-        }
-
         let flash_settings = FlashSettings::new(
             args.flash_config_args.flash_mode,
             args.flash_config_args.flash_size,
             args.flash_config_args.flash_freq,
         );
 
-        let flash_config = FlashData::new(
+        let flash_data = FlashData::new(
             &elf_data,
             bootloader,
             partition_table,
             args.flash_args.format,
             flash_settings,
         )?;
-        flash_elf_image(&mut flasher, flash_config)?;
+
+        if args.flash_args.erase_parts.is_some() || args.flash_args.erase_data_parts.is_some() {
+            erase_partitions(
+                &mut flasher,
+                flash_data.partition_table.clone(),
+                args.flash_args.erase_parts,
+                args.flash_args.erase_data_parts,
+            )?;
+        }
+
+        flash_elf_image(&mut flasher, flash_data)?;
     }
 
     if args.flash_args.monitor {
@@ -306,15 +302,19 @@ fn save_image(args: SaveImageArgs) -> Result<()> {
         args.flash_config_args.flash_freq,
     );
 
-    save_elf_as_image(
-        args.save_image_args.chip,
+    let flash_data = FlashData::new(
         &elf_data,
-        args.save_image_args.file,
+        args.save_image_args.bootloader.as_deref(),
+        args.save_image_args.partition_table.as_deref(),
         args.format,
         flash_settings,
+    )?;
+
+    save_elf_as_image(
+        args.save_image_args.chip,
+        args.save_image_args.file,
+        flash_data,
         args.save_image_args.merge,
-        args.save_image_args.bootloader,
-        args.save_image_args.partition_table,
         args.save_image_args.skip_padding,
     )?;
 

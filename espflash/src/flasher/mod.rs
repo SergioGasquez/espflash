@@ -15,6 +15,7 @@ use strum::{Display, EnumIter, EnumVariantNames};
 
 use self::stubs::FlashStub;
 use crate::{
+    cli::parse_partition_table,
     command::{Command, CommandType},
     connection::Connection,
     elf::{ElfFirmwareImage, FirmwareImage, RomSegment},
@@ -416,7 +417,7 @@ impl<'a> FlashData<'a> {
     pub fn new(
         elf_data: &'a [u8],
         bootloader: Option<&'a Path>,
-        partition_table: Option<PartitionTable>,
+        partition_table: Option<&'a Path>,
         image_format: Option<ImageFormatKind>,
         flash_settings: FlashSettings,
     ) -> Result<Self> {
@@ -429,6 +430,13 @@ impl<'a> FlashData<'a> {
             Some(data)
         } else {
             None
+        };
+
+        // If the '-T' option is provided, load the partition table from
+        // the CSV or binary file at the specified path.
+        let partition_table = match partition_table {
+            Some(path) => Some(parse_partition_table(path)?),
+            None => None,
         };
 
         Ok(FlashData {
