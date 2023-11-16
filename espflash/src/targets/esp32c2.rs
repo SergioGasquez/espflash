@@ -6,7 +6,7 @@ use crate::{
     connection::Connection,
     elf::FirmwareImage,
     error::Error,
-    flasher::{FlashFrequency, FlashMode, FlashSize},
+    flasher::{FlashFrequency, FlashSettings},
     image_format::{DirectBootFormat, IdfBootloaderFormat, ImageFormat, ImageFormatKind},
     targets::{bytes_to_mac_addr, Chip, Esp32Params, ReadEFuse, SpiRegisters, Target},
 };
@@ -91,9 +91,7 @@ impl Target for Esp32c2 {
         partition_table: Option<PartitionTable>,
         image_format: Option<ImageFormatKind>,
         _chip_revision: Option<(u32, u32)>,
-        flash_mode: Option<FlashMode>,
-        flash_size: Option<FlashSize>,
-        flash_freq: Option<FlashFrequency>,
+        flash_settings: FlashSettings,
     ) -> Result<Box<dyn ImageFormat<'a> + 'a>, Error> {
         let image_format = image_format.unwrap_or(ImageFormatKind::EspBootloader);
 
@@ -104,9 +102,7 @@ impl Target for Esp32c2 {
                 PARAMS,
                 partition_table,
                 bootloader,
-                flash_mode,
-                flash_size,
-                flash_freq,
+                flash_settings,
             )?)),
             ImageFormatKind::DirectBoot => Ok(Box::new(DirectBootFormat::new(image, 0)?)),
         }

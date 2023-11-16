@@ -15,7 +15,7 @@ use espflash::{
         PartitionTableArgs,
     },
     error::Error as EspflashError,
-    flasher::FlashConfig,
+    flasher::{FlashConfig, FlashSettings},
     image_format::ImageFormatKind,
     logging::initialize_logger,
     targets::Chip,
@@ -319,14 +319,18 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             )?;
         }
 
+        let flash_settings = FlashSettings::new(
+            args.build_args.flash_config_args.flash_mode,
+            args.build_args.flash_config_args.flash_size,
+            args.build_args.flash_config_args.flash_freq,
+        );
+
         let flash_config: FlashConfig = FlashConfig::new(
             &elf_data,
             bootloader,
             partition_table,
             args.flash_args.format.or(metadata.format),
-            args.build_args.flash_config_args.flash_mode,
-            args.build_args.flash_config_args.flash_size,
-            args.build_args.flash_config_args.flash_freq,
+            flash_settings,
         )?;
         flash_elf_image(&mut flasher, flash_config)?;
     }
@@ -553,14 +557,18 @@ fn save_image(args: SaveImageArgs) -> Result<()> {
         println!("Partition table:   {}", path.display());
     }
 
+    let flash_settings = FlashSettings::new(
+        args.build_args.flash_config_args.flash_mode,
+        args.build_args.flash_config_args.flash_size,
+        args.build_args.flash_config_args.flash_freq,
+    );
+
     save_elf_as_image(
         args.save_image_args.chip,
         &elf_data,
         args.save_image_args.file,
         args.format.or(metadata.format),
-        args.build_args.flash_config_args.flash_mode,
-        args.build_args.flash_config_args.flash_size,
-        args.build_args.flash_config_args.flash_freq,
+        flash_settings,
         args.save_image_args.merge,
         bootloader,
         partition_table,

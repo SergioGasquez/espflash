@@ -27,7 +27,9 @@ use crate::{
     connection::Connection,
     elf::FirmwareImage,
     error::Error,
-    flasher::{FlashFrequency, FlashMode, FlashSize, SpiAttachParams, FLASH_WRITE_SIZE},
+    flasher::{
+        FlashFrequency, FlashSettings, SpiAttachParams, FLASH_WRITE_SIZE,
+    },
     image_format::{ImageFormat, ImageFormatKind},
 };
 
@@ -299,9 +301,7 @@ pub trait Target: ReadEFuse {
         partition_table: Option<PartitionTable>,
         image_format: Option<ImageFormatKind>,
         chip_revision: Option<(u32, u32)>,
-        flash_mode: Option<FlashMode>,
-        flash_size: Option<FlashSize>,
-        flash_freq: Option<FlashFrequency>,
+        flash_settings: FlashSettings,
     ) -> Result<Box<dyn ImageFormat<'a> + 'a>, Error>;
 
     /// What is the MAC address?

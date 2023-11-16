@@ -267,6 +267,32 @@ impl SpiSetParams {
     }
 }
 
+///
+#[derive(Copy, Clone, Debug)]
+#[non_exhaustive]
+pub struct FlashSettings {
+    pub mode: Option<FlashMode>,
+    pub size: Option<FlashSize>,
+    pub freq: Option<FlashFrequency>,
+}
+
+impl FlashSettings {
+    pub const fn default() -> Self {
+        FlashSettings {
+            mode: None,
+            size: None,
+            freq: None,
+        }
+    }
+    pub fn new(
+        mode: Option<FlashMode>,
+        size: Option<FlashSize>,
+        freq: Option<FlashFrequency>,
+    ) -> Self {
+        FlashSettings { mode, size, freq }
+    }
+}
+
 /// Parameters for attaching to a target devices SPI flash
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -383,9 +409,7 @@ pub struct FlashConfig<'a> {
     pub bootloader: Option<Vec<u8>>,
     pub partition_table: Option<PartitionTable>,
     pub image_format: Option<ImageFormatKind>,
-    pub flash_mode: Option<FlashMode>,
-    pub flash_size: Option<FlashSize>,
-    pub flash_freq: Option<FlashFrequency>,
+    pub flash_settings: FlashSettings,
 }
 
 impl<'a> FlashConfig<'a> {
@@ -394,9 +418,7 @@ impl<'a> FlashConfig<'a> {
         bootloader: Option<&'a Path>,
         partition_table: Option<PartitionTable>,
         image_format: Option<ImageFormatKind>,
-        flash_mode: Option<FlashMode>,
-        flash_size: Option<FlashSize>,
-        flash_freq: Option<FlashFrequency>,
+        flash_settings: FlashSettings,
     ) -> Result<Self> {
         // If the '--bootloader' option is provided, load the binary file at the
         // specified path.
@@ -414,9 +436,7 @@ impl<'a> FlashConfig<'a> {
             bootloader,
             partition_table,
             image_format,
-            flash_mode,
-            flash_size,
-            flash_freq,
+            flash_settings,
         })
     }
 }
@@ -832,6 +852,11 @@ impl Flasher {
         } else {
             None
         };
+        let flash_settings = FlashSettings::new(
+            config.flash_settings.mode,
+            config.flash_settings.size.or(Some(self.flash_size)),
+            config.flash_settings.freq,
+        );
 
         let image = self.chip.into_target().get_flash_image(
             &image,
@@ -839,9 +864,7 @@ impl Flasher {
             config.partition_table,
             config.image_format,
             chip_revision,
-            config.flash_mode,
-            config.flash_size.or(Some(self.flash_size)),
-            config.flash_freq,
+            flash_settings,
         )?;
 
         // When the `cli` feature is enabled, display the image size information.

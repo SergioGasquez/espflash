@@ -28,7 +28,10 @@ use self::{config::Config, monitor::monitor, serial::get_serial_port_info};
 use crate::{
     elf::ElfFirmwareImage,
     error::{Error, MissingPartition, MissingPartitionTable},
-    flasher::{FlashConfig, FlashFrequency, FlashMode, FlashSize, Flasher, ProgressCallbacks},
+    flasher::{
+        FlashConfig, FlashFrequency, FlashMode, FlashSettings, FlashSize, Flasher,
+        ProgressCallbacks,
+    },
     image_format::ImageFormatKind,
     interface::Interface,
     targets::Chip,
@@ -308,9 +311,7 @@ pub fn save_elf_as_image(
     elf_data: &[u8],
     image_path: PathBuf,
     image_format: Option<ImageFormatKind>,
-    flash_mode: Option<FlashMode>,
-    flash_size: Option<FlashSize>,
-    flash_freq: Option<FlashFrequency>,
+    flash_settings: FlashSettings,
     merge: bool,
     bootloader_path: Option<PathBuf>,
     partition_table_path: Option<PathBuf>,
@@ -357,9 +358,7 @@ pub fn save_elf_as_image(
             partition_table,
             image_format,
             None,
-            flash_mode,
-            flash_size,
-            flash_freq,
+            flash_settings,
         )?;
 
         display_image_size(image.app_size(), image.part_size());
@@ -385,7 +384,7 @@ pub fn save_elf_as_image(
             // Take flash_size as input parameter, if None, use default value of 4Mb
             let padding_bytes = vec![
                 0xffu8;
-                flash_size.unwrap_or_default().size() as usize
+                flash_settings.size.unwrap_or_default().size() as usize
                     - file.metadata().into_diagnostic()?.len() as usize
             ];
             file.write_all(&padding_bytes).into_diagnostic()?;
@@ -397,9 +396,7 @@ pub fn save_elf_as_image(
             None,
             image_format,
             None,
-            flash_mode,
-            flash_size,
-            flash_freq,
+            flash_settings,
         )?;
 
         display_image_size(image.app_size(), image.part_size());

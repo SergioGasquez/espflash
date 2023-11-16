@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     elf::{CodeSegment, FirmwareImage, RomSegment},
     error::Error,
-    flasher::{FlashFrequency, FlashMode, FlashSize},
+    flasher::FlashSettings,
     image_format::{
         update_checksum, ImageFormat, ImageHeader, SegmentHeader, ESP_CHECKSUM_MAGIC, ESP_MAGIC,
         WP_PIN_DISABLED,
@@ -36,12 +36,11 @@ impl<'a> IdfBootloaderFormat<'a> {
         params: Esp32Params,
         partition_table: Option<PartitionTable>,
         bootloader: Option<Vec<u8>>,
-        flash_mode: Option<FlashMode>,
-        flash_size: Option<FlashSize>,
-        flash_freq: Option<FlashFrequency>,
+        flash_settings: FlashSettings,
     ) -> Result<Self, Error> {
-        let partition_table = partition_table
-            .unwrap_or_else(|| params.default_partition_table(flash_size.map(|v| v.size())));
+        let partition_table = partition_table.unwrap_or_else(|| {
+            params.default_partition_table(flash_settings.size.map(|v| v.size()))
+        });
         let mut bootloader = if let Some(bytes) = bootloader {
             Cow::Owned(bytes)
         } else {
@@ -55,13 +54,13 @@ impl<'a> IdfBootloaderFormat<'a> {
         }
 
         // update the header if a user has specified any custom arguments
-        if let Some(mode) = flash_mode {
+        if let Some(mode) = flash_settings.mode {
             header.flash_mode = mode as u8;
         }
 
         header.write_flash_config(
-            flash_size.unwrap_or_default(),
-            flash_freq.unwrap_or(params.flash_freq),
+            flash_settings.size.unwrap_or_default(),
+            flash_settings.freq.unwrap_or(params.flash_freq),
             chip,
         )?;
 
@@ -313,9 +312,15 @@ pub mod tests {
         let expected_bin = fs::read("tests/resources/esp32_hal_blinky.bin").unwrap();
 
         let image = ElfFirmwareImage::try_from(input_bytes.as_slice()).unwrap();
-        let flash_image =
-            IdfBootloaderFormat::new(&image, Chip::Esp32, PARAMS, None, None, None, None, None)
-                .unwrap();
+        let flash_image = IdfBootloaderFormat::new(
+            &image,
+            Chip::Esp32,
+            PARAMS,
+            None,
+            None,
+            FlashSettings::default(),
+        )
+        .unwrap();
 
         let segments = flash_image.flash_segments().collect::<Vec<_>>();
         assert_eq!(segments.len(), 3);
