@@ -294,7 +294,7 @@ pub mod tests {
     use std::fs;
 
     use super::*;
-    use crate::elf::ElfFirmwareImage;
+    use crate::{elf::ElfFirmwareImage, image_format::FlashFrequency};
 
     // Copied from: src/targets/esp32.rs
     const PARAMS: Esp32Params = Esp32Params::new(
