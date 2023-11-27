@@ -5,6 +5,7 @@ use crossterm::{
     QueueableCommand,
 };
 use defmt_decoder::{Frame, Table};
+use defmt_parser::Level;
 
 use crate::cli::monitor::parser::InputParser;
 
@@ -114,20 +115,17 @@ impl EspDefmt {
         match frame.level() {
             Some(level) => {
                 let color = match level {
-                    defmt_parser::Level::Trace => Color::Cyan,
-                    defmt_parser::Level::Debug => Color::Blue,
-                    defmt_parser::Level::Info => Color::Green,
-                    defmt_parser::Level::Warn => Color::Yellow,
-                    defmt_parser::Level::Error => Color::Red,
+                    Level::Trace => Color::Magenta,
+                    Level::Debug => Color::Blue,
+                    Level::Info => Color::Green,
+                    Level::Warn => Color::Yellow,
+                    Level::Error => Color::Red,
                 };
 
                 // Print the level before each line.
-                let level = level.as_str().to_uppercase();
+                let level = level.as_str().to_uppercase().with(color).bold();
                 for line in frame.display_message().to_string().lines() {
-                    out.queue(PrintStyledContent(
-                        format!("[{level}] - {line}\r\n").with(color),
-                    ))
-                    .unwrap();
+                    out.queue(Print(format!("[{level}] - {line}\r\n"))).unwrap();
                 }
             }
             None => {
