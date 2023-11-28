@@ -41,6 +41,8 @@ mod symbols;
 pub enum LogFormat {
     /// defmt
     Defmt,
+    /// defmt-verbose
+    DefmtVerbose,
     /// serial
     Serial,
 }
@@ -90,7 +92,8 @@ pub fn monitor(
     let mut stdout = ResolvingPrinter::new(elf, stdout.lock());
 
     let mut parser: Box<dyn InputParser> = match log_format {
-        LogFormat::Defmt => Box::new(parser::esp_defmt::EspDefmt::new(elf)),
+        LogFormat::Defmt => Box::new(parser::esp_defmt::EspDefmt::new(elf, false)),
+        LogFormat::DefmtVerbose => Box::new(parser::esp_defmt::EspDefmt::new(elf, true)),
         LogFormat::Serial => Box::new(parser::serial::Serial),
     };
 

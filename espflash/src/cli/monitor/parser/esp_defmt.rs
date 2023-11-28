@@ -1,10 +1,10 @@
 use std::io::Write;
 
 use crossterm::{
-    style::{Color, Print, PrintStyledContent, Stylize},
+    style::{Color, Print, Stylize},
     QueueableCommand,
 };
-use defmt_decoder::{Frame, Table};
+use defmt_decoder::{Frame, Location, Table};
 use defmt_parser::Level;
 
 use crate::cli::monitor::parser::InputParser;
@@ -81,6 +81,8 @@ impl FrameDelimiter {
 pub struct EspDefmt {
     delimiter: FrameDelimiter,
     table: Option<Table>,
+    location_information: Option<std::collections::BTreeMap<u64, Location>>,
+    verbose: bool,
 }
 
 impl EspDefmt {
@@ -100,10 +102,32 @@ impl EspDefmt {
         })
     }
 
-    pub fn new(elf: Option<&[u8]>) -> Self {
+    pub fn new(elf: Option<&[u8]>, verbose: bool) -> Self {
+        let table = Self::load_table(elf);
+        let mut locs = None;
+
+        if let Some(ref table) = table {
+            let locations = table.get_locations(&elf.unwrap()).unwrap();
+
+            if !table.is_empty() && locations.is_empty() {
+                log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+            } else if table
+                .indices()
+                .all(|idx| locations.contains_key(&(idx as u64)))
+            {
+                locs = Some(locations);
+            } else {
+                log::warn!("Location info is incomplete; it will be omitted from the output.");
+            }
+        } else {
+            log::error!("defmt table couldn't be loaded from binary.");
+        }
+
         Self {
             delimiter: FrameDelimiter::new(),
-            table: Self::load_table(elf),
+            table,
+            location_information: locs,
+            verbose,
         }
     }
 
@@ -111,31 +135,70 @@ impl EspDefmt {
         out.write_all(bytes).unwrap();
     }
 
-    fn handle_defmt(frame: Frame<'_>, out: &mut dyn Write) {
-        match frame.level() {
-            Some(level) => {
-                let color = match level {
-                    Level::Trace => Color::Magenta,
-                    Level::Debug => Color::Blue,
-                    Level::Info => Color::Green,
-                    Level::Warn => Color::Yellow,
-                    Level::Error => Color::Red,
-                };
+    fn handle_defmt(
+        frame: Frame<'_>,
+        out: &mut dyn Write,
+        location_information: &Option<std::collections::BTreeMap<u64, Location>>,
+        verbose: bool,
+    ) {
+        let level = colored_level(frame.level());
 
-                // Print the level before each line.
-                let level = level.as_str().to_uppercase().with(color).bold();
-                for line in frame.display_message().to_string().lines() {
-                    out.queue(Print(format!("[{level}] - {line}\r\n"))).unwrap();
-                }
+        let loc: Option<_> = location_information
+            .as_ref()
+            .and_then(|locs| locs.get(&frame.index()));
+        let (path, loc_line) = if let Some(loc) = loc {
+            let relpath = loc
+                .file
+                .strip_prefix(&std::env::current_dir().expect("Failed to get current directory"))
+                .map_or_else(
+                    |_| loc.file.display().to_string(),
+                    |relpath| relpath.display().to_string(),
+                );
+            (relpath, Some(loc.line))
+        } else {
+            ("<unknown>".to_string(), None)
+        };
+
+        if verbose {
+            for line in frame.display_message().to_string().lines() {
+                out.queue(Print(format!(
+                    "{level}{line}\r\n└─ {path}:{loc_line}\r\n",
+                    level = level,
+                    line = line,
+                    path = path,
+                    loc_line = loc_line.unwrap_or(0)
+                )))
+                .expect("Failed to write to output");
             }
-            None => {
-                out.queue(Print(frame.display_message().to_string()))
-                    .unwrap();
-                out.queue(Print("\r\n")).unwrap();
+        } else {
+            for line in frame.display_message().to_string().lines() {
+                out.queue(Print(format!(
+                    "{level}{line}\r\n",
+                    level = level,
+                    line = line
+                )))
+                .expect("Failed to write to output");
             }
         }
 
-        out.flush().unwrap();
+        out.flush().expect("Failed to flush output");
+    }
+}
+
+fn colored_level(level: Option<Level>) -> String {
+    if let Some(level) = level {
+        let color = match level {
+            Level::Trace => Color::Magenta,
+            Level::Debug => Color::Blue,
+            Level::Info => Color::Green,
+            Level::Warn => Color::Yellow,
+            Level::Error => Color::Red,
+        };
+
+        // Print the level before each line.
+        format!("[{}] - ", level.as_str().to_uppercase().with(color).bold())
+    } else {
+        String::new()
     }
 }
 
@@ -155,7 +218,7 @@ impl InputParser for EspDefmt {
                 decoder.received(FRAME_END);
 
                 if let Ok(frame) = decoder.decode() {
-                    Self::handle_defmt(frame, out);
+                    Self::handle_defmt(frame, out, &self.location_information, self.verbose);
                 } else {
                     log::warn!("Failed to decode defmt frame");
                 }
