@@ -74,6 +74,8 @@ enum Commands {
     /// '--to-binary' options, plus the ability to print a partition table
     /// in tabular format.
     PartitionTable(PartitionTableArgs),
+    /// Read the contents of a target device's flash memory
+    ReadFlash(ReadFlashArgs),
     /// Generate a binary application image and save it to a local disk
     ///
     /// If the '--merge' option is used, then the bootloader, partition table,
@@ -114,6 +116,28 @@ struct FlashArgs {
     /// Flashing arguments
     #[clap(flatten)]
     flash_args: cli::FlashArgs,
+    /// ELF image to flash
+    image: PathBuf,
+}
+
+#[derive(Debug, Args)]
+#[non_exhaustive]
+struct ReadFlashArgs {
+    /// Connection configuration
+    #[clap(flatten)]
+    connect_args: ConnectArgs,
+    /// Flashing configuration
+    #[clap(flatten)]
+    pub flash_config_args: FlashConfigArgs,
+    /// Flashing arguments
+    #[clap(flatten)]
+    flash_args: cli::FlashArgs,
+    /// Offset to start reading from
+    #[arg(value_name = "OFFSET", value_parser = parse_uint32)]
+    pub addr: u32,
+    /// Size of the region to read
+    #[arg(value_name = "SIZE", value_parser = parse_uint32)]
+    pub size: u32,
     /// ELF image to flash
     image: PathBuf,
 }
@@ -176,6 +200,7 @@ fn main() -> Result<()> {
         Commands::Flash(args) => flash(args, &config),
         Commands::Monitor(args) => serial_monitor(args, &config),
         Commands::PartitionTable(args) => partition_table(args),
+        Commands::ReadFlash(args) => read_flash(args),
         Commands::SaveImage(args) => save_image(args),
         Commands::WriteBin(args) => write_bin(args, &config),
         Commands::ChecksumMd5(args) => checksum_md5(&args, &config),
@@ -287,6 +312,30 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+fn read_flash(args: ReadFlashArgs) -> Result<()> {
+    let mut flasher = connect(&args.connect_args, config, false, false)?;
+    // If the user has provided a flash size via a command-line argument, we'll
+    // override the detected (or default) value with this.
+    if let Some(flash_size) = args.flash_config_args.flash_size {
+        flasher.set_flash_size(flash_size);
+    }
+
+    print_board_info(&mut flasher)?;
+
+    if args.connect_args.no_stub {
+        println!("Use ROM function");
+    }
+
+    // https://github.com/espressif/esptool/blob/master/esptool/loader.py#L1159
+    flasher
+        .connection()
+        .with_timeout(CommandType::ReadFlash.timeout(), |connection| {
+            connection.command(Command::ReadFlash { offset, size })
+        });
+
+    Ok(())
 }
 
 fn save_image(args: SaveImageArgs) -> Result<()> {

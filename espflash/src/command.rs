@@ -42,6 +42,7 @@ pub enum CommandType {
     // Some commands supported by stub only
     EraseFlash = 0xd0,
     EraseRegion = 0xd1,
+    ReadFlash = 0xd2,
 }
 
 impl CommandType {
@@ -158,6 +159,10 @@ pub enum Command<'a> {
     FlashDetect,
     EraseFlash,
     EraseRegion {
+        offset: u32,
+        size: u32,
+    },
+    ReadFlash {
         offset: u32,
         size: u32,
     },
@@ -360,6 +365,15 @@ impl<'a> Command<'a> {
                 write_basic(writer, &[], 0)?;
             }
             Command::EraseRegion { offset, size } => {
+                // length
+                writer.write_all(&(8u16.to_le_bytes()))?;
+                // checksum
+                writer.write_all(&(0u32.to_le_bytes()))?;
+                // data
+                writer.write_all(&offset.to_le_bytes())?;
+                writer.write_all(&size.to_le_bytes())?;
+            }
+            Command::ReadFlash { offset, size } => {
                 // length
                 writer.write_all(&(8u16.to_le_bytes()))?;
                 // checksum
