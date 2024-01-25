@@ -1,7 +1,9 @@
 use std::ops::Range;
 
+#[cfg(feature = "serialport")]
+use crate::connection::Connection;
 use crate::{
-    connection::Connection,
+    // connection::Connection,
     elf::FirmwareImage,
     error::{Error, UnsupportedImageFormatError},
     flasher::FlashData,
@@ -25,6 +27,7 @@ const XTAL_CLK_DIVIDER: u32 = 2;
 pub struct Esp8266;
 
 impl Esp8266 {
+    #[cfg(feature = "serialport")]
     /// Check if the magic value contains the specified value
     pub fn has_magic_value(value: u32) -> bool {
         CHIP_DETECT_MAGIC_VALUES.contains(&value)
@@ -42,10 +45,12 @@ impl Target for Esp8266 {
         FLASH_RANGES.iter().any(|range| range.contains(&addr))
     }
 
+    #[cfg(feature = "serialport")]
     fn chip_features(&self, _connection: &mut Connection) -> Result<Vec<&str>, Error> {
         Ok(vec!["WiFi"])
     }
 
+    #[cfg(feature = "serialport")]
     fn major_chip_version(&self, _connection: &mut Connection) -> Result<u32, Error> {
         Err(Error::UnsupportedFeature {
             chip: Chip::Esp8266,
@@ -53,6 +58,7 @@ impl Target for Esp8266 {
         })
     }
 
+    #[cfg(feature = "serialport")]
     fn minor_chip_version(&self, _connection: &mut Connection) -> Result<u32, Error> {
         Err(Error::UnsupportedFeature {
             chip: Chip::Esp8266,
@@ -60,6 +66,7 @@ impl Target for Esp8266 {
         })
     }
 
+    #[cfg(feature = "serialport")]
     fn crystal_freq(&self, connection: &mut Connection) -> Result<u32, Error> {
         let uart_div = connection.read_reg(UART_CLKDIV_REG)? & UART_CLKDIV_MASK;
         let est_xtal = (connection.get_baud()? * uart_div) / 1_000_000 / XTAL_CLK_DIVIDER;
@@ -87,6 +94,7 @@ impl Target for Esp8266 {
         }
     }
 
+    #[cfg(feature = "serialport")]
     fn mac_address(&self, connection: &mut Connection) -> Result<String, Error> {
         let word0 = self.read_efuse(connection, 0)?;
         let word1 = self.read_efuse(connection, 1)?;

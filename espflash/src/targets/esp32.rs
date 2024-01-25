@@ -1,7 +1,8 @@
 use std::ops::Range;
 
+use crate::connection::Connection;
 use crate::{
-    connection::Connection,
+    // connection::Connection,
     elf::FirmwareImage,
     error::{Error, UnsupportedImageFormatError},
     flasher::{FlashData, FlashFrequency},
@@ -39,6 +40,7 @@ impl Esp32 {
         CHIP_DETECT_MAGIC_VALUES.contains(&value)
     }
 
+    #[cfg(feature = "serialport")]
     /// Return the package version based on the eFuses
     fn package_version(&self, connection: &mut Connection) -> Result<u32, Error> {
         let word3 = self.read_efuse(connection, 3)?;
@@ -61,6 +63,7 @@ impl Target for Esp32 {
         FLASH_RANGES.iter().any(|range| range.contains(&addr))
     }
 
+    #[cfg(feature = "serialport")]
     fn chip_features(&self, connection: &mut Connection) -> Result<Vec<&str>, Error> {
         let word3 = self.read_efuse(connection, 3)?;
         let word4 = self.read_efuse(connection, 4)?;
@@ -119,6 +122,7 @@ impl Target for Esp32 {
         Ok(features)
     }
 
+    #[cfg(feature = "serialport")]
     fn major_chip_version(&self, connection: &mut Connection) -> Result<u32, Error> {
         let apb_ctl_date = connection.read_reg(0x3FF6_607C)?;
 
@@ -136,10 +140,12 @@ impl Target for Esp32 {
         }
     }
 
+    #[cfg(feature = "serialport")]
     fn minor_chip_version(&self, connection: &mut Connection) -> Result<u32, Error> {
         Ok((self.read_efuse(connection, 5)? >> 24) & 0x3)
     }
 
+    #[cfg(feature = "serialport")]
     fn crystal_freq(&self, connection: &mut Connection) -> Result<u32, Error> {
         let uart_div = connection.read_reg(UART_CLKDIV_REG)? & UART_CLKDIV_MASK;
         let est_xtal = (connection.get_baud()? * uart_div) / 1_000_000 / XTAL_CLK_DIVIDER;
@@ -174,6 +180,7 @@ impl Target for Esp32 {
         }
     }
 
+    #[cfg(feature = "serialport")]
     fn mac_address(&self, connection: &mut Connection) -> Result<String, Error> {
         let word1 = self.read_efuse(connection, 1)?;
         let word2 = self.read_efuse(connection, 2)?;

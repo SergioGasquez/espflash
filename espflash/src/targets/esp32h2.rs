@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
-use super::{Chip, Esp32Params, ReadEFuse, SpiRegisters, Target};
+use super::{Chip, Esp32Params, ReadEFuse, SpiRegisters};
+#[cfg(feature = "serialport")]
+use crate::connection::Connection;
 use crate::{
-    connection::Connection,
+    // connection::Connection,
     elf::FirmwareImage,
     error::Error,
     flasher::{FlashData, FlashFrequency},
     image_format::{DirectBootFormat, IdfBootloaderFormat, ImageFormat, ImageFormatKind},
+    targets::Target,
 };
 
 const CHIP_DETECT_MAGIC_VALUES: &[u32] = &[0xD7B7_3E80];
@@ -30,6 +33,7 @@ const PARAMS: Esp32Params = Esp32Params::new(
 pub struct Esp32h2;
 
 impl Esp32h2 {
+    #[cfg(feature = "serialport")]
     pub fn has_magic_value(value: u32) -> bool {
         CHIP_DETECT_MAGIC_VALUES.contains(&value)
     }
@@ -46,14 +50,17 @@ impl Target for Esp32h2 {
         FLASH_RANGES.iter().any(|range| range.contains(&addr))
     }
 
+    #[cfg(feature = "serialport")]
     fn chip_features(&self, _connection: &mut Connection) -> Result<Vec<&str>, Error> {
         Ok(vec!["BLE"])
     }
 
+    #[cfg(feature = "serialport")]
     fn major_chip_version(&self, connection: &mut Connection) -> Result<u32, Error> {
         Ok((self.read_efuse(connection, 22)? >> 24) & 0x3)
     }
 
+    #[cfg(feature = "serialport")]
     fn minor_chip_version(&self, connection: &mut Connection) -> Result<u32, Error> {
         let hi = (self.read_efuse(connection, 22)? >> 23) & 0x1;
         let lo = (self.read_efuse(connection, 20)? >> 18) & 0x7;
@@ -61,6 +68,7 @@ impl Target for Esp32h2 {
         Ok((hi << 3) + lo)
     }
 
+    #[cfg(feature = "serialport")]
     fn crystal_freq(&self, _connection: &mut Connection) -> Result<u32, Error> {
         // The ESP32-H2's XTAL has a fixed frequency of 32MHz.
         Ok(32)

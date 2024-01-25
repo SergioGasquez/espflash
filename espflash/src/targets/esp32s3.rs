@@ -1,7 +1,9 @@
 use std::ops::Range;
 
+#[cfg(feature = "serialport")]
+use crate::connection::Connection;
 use crate::{
-    connection::Connection,
+    // connection::Connection,
     elf::FirmwareImage,
     error::Error,
     flasher::{FlashData, FlashFrequency},
@@ -29,16 +31,19 @@ const PARAMS: Esp32Params = Esp32Params::new(
 pub struct Esp32s3;
 
 impl Esp32s3 {
+    #[cfg(feature = "serialport")]
     /// Return the major BLK version based on eFuses
     fn blk_version_major(&self, connection: &mut Connection) -> Result<u32, Error> {
         Ok(self.read_efuse(connection, 96)? & 0x3)
     }
 
+    #[cfg(feature = "serialport")]
     /// Return the minor BLK version based on eFuses
     fn blk_version_minor(&self, connection: &mut Connection) -> Result<u32, Error> {
         Ok(self.read_efuse(connection, 20)? >> 24 & 0x7)
     }
 
+    #[cfg(feature = "serialport")]
     /// Check if the magic value contains the specified value
     pub fn has_magic_value(value: u32) -> bool {
         CHIP_DETECT_MAGIC_VALUES.contains(&value)
@@ -56,10 +61,12 @@ impl Target for Esp32s3 {
         FLASH_RANGES.iter().any(|range| range.contains(&addr))
     }
 
+    #[cfg(feature = "serialport")]
     fn chip_features(&self, _connection: &mut Connection) -> Result<Vec<&str>, Error> {
         Ok(vec!["WiFi", "BLE"])
     }
 
+    #[cfg(feature = "serialport")]
     fn major_chip_version(&self, connection: &mut Connection) -> Result<u32, Error> {
         let major = self.read_efuse(connection, 22)? >> 24 & 0x3;
 
@@ -76,6 +83,7 @@ impl Target for Esp32s3 {
         }
     }
 
+    #[cfg(feature = "serialport")]
     fn minor_chip_version(&self, connection: &mut Connection) -> Result<u32, Error> {
         let hi = self.read_efuse(connection, 22)? >> 23 & 0x1;
         let lo = self.read_efuse(connection, 20)? >> 18 & 0x7;
@@ -83,6 +91,7 @@ impl Target for Esp32s3 {
         Ok((hi << 3) + lo)
     }
 
+    #[cfg(feature = "serialport")]
     fn crystal_freq(&self, _connection: &mut Connection) -> Result<u32, Error> {
         // The ESP32-S3's XTAL has a fixed frequency of 40MHz.
         Ok(40)

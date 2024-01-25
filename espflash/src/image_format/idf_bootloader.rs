@@ -30,6 +30,7 @@ pub struct IdfBootloaderFormat<'a> {
     partition_table_offset: u32,
 }
 
+#[cfg(feature = "serialport")]
 impl<'a> IdfBootloaderFormat<'a> {
     pub fn new(
         image: &'a dyn FirmwareImage<'a>,
@@ -299,6 +300,7 @@ fn merge_adjacent_segments(mut segments: Vec<CodeSegment>) -> Vec<CodeSegment> {
     merged
 }
 
+#[cfg(feature = "serialport")]
 /// Save a segment to the data buffer.
 fn save_flash_segment(
     data: &mut Vec<u8>,
@@ -322,6 +324,7 @@ fn save_flash_segment(
     Ok(checksum)
 }
 
+#[cfg(feature = "serialport")]
 /// Stores a segment header and the segment data in the data buffer.
 fn save_segment(data: &mut Vec<u8>, segment: &CodeSegment, checksum: u8) -> Result<u8, Error> {
     let padding = (4 - segment.size() % 4) % 4;

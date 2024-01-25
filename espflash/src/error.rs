@@ -10,11 +10,13 @@ use slip_codec::SlipError;
 use strum::{FromRepr, VariantNames};
 use thiserror::Error;
 
+#[cfg(feature = "serialport")]
+use crate::interface::SerialConfigError;
 use crate::{
     command::CommandType,
     flasher::{FlashFrequency, FlashSize},
     image_format::ImageFormatKind,
-    interface::SerialConfigError,
+    // interface::SerialConfigError,
     targets::Chip,
 };
 
@@ -101,6 +103,7 @@ pub enum Error {
     )]
     StubRequiredToEraseFlash,
 
+    #[cfg(feature = "serialport")]
     #[error("Incorrect serial port configuration")]
     #[diagnostic(
         code(espflash::serial_config),
@@ -188,6 +191,7 @@ pub enum Error {
     InternalError,
 }
 
+#[cfg(feature = "serialport")]
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
         Self::Connection(err.into())
@@ -208,6 +212,7 @@ impl From<SlipError> for Error {
     }
 }
 
+#[cfg(feature = "serialport")]
 impl From<SerialConfigError> for Error {
     fn from(err: SerialConfigError) -> Self {
         Self::SerialConfiguration(err)
@@ -259,6 +264,7 @@ pub enum ConnectionError {
     Serial(#[source] serialport::Error),
 }
 
+#[cfg(feature = "serialport")]
 impl From<io::Error> for ConnectionError {
     fn from(err: io::Error) -> Self {
         from_error_kind(err.kind(), err)
@@ -279,6 +285,7 @@ impl From<serialport::Error> for ConnectionError {
     }
 }
 
+#[cfg(feature = "serialport")]
 impl From<SlipError> for ConnectionError {
     fn from(err: SlipError) -> Self {
         match err {

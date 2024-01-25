@@ -11,19 +11,23 @@ use esp_idf_part::PartitionTable;
 use log::{debug, info, warn};
 use miette::{Context, IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "serialport")]
 use serialport::UsbPortInfo;
 use strum::{Display, EnumIter, EnumVariantNames};
 
 use self::stubs::FlashStub;
 use crate::{
     command::{Command, CommandType},
-    connection::Connection,
+    // connection::Connection,
     elf::{ElfFirmwareImage, FirmwareImage, RomSegment},
     error::{ConnectionError, Error, ResultExt},
     image_format::ImageFormatKind,
-    interface::Interface,
+    // interface::Interface,
     targets::Chip,
 };
+
+#[cfg(feature = "serialport")]
+use crate::{connection::Connection, interface::Interface};
 
 mod stubs;
 
@@ -488,6 +492,7 @@ pub trait ProgressCallbacks {
     fn finish(&mut self);
 }
 
+#[cfg(feature = "serialport")]
 /// Connect to and flash a target device
 pub struct Flasher {
     /// Connection for flash operations
@@ -506,6 +511,7 @@ pub struct Flasher {
     skip: bool,
 }
 
+#[cfg(feature = "serialport")]
 impl Flasher {
     pub fn connect(
         serial: Interface,

@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use esp_idf_part::{AppType, DataType, Partition, PartitionTable, SubType, Type};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
+#[cfg(feature = "serialport")]
+use self::flash_target::FlashTarget;
 use self::flash_target::MAX_RAM_BLOCK_SIZE;
 pub use self::{
     esp32::Esp32,
@@ -22,10 +24,12 @@ pub use self::{
     esp32s2::Esp32s2,
     esp32s3::Esp32s3,
     esp8266::Esp8266,
-    flash_target::{Esp32Target, Esp8266Target, FlashTarget, RamTarget},
+    flash_target::{Esp32Target, Esp8266Target, RamTarget},
 };
+#[cfg(feature = "serialport")]
+use crate::connection::Connection;
 use crate::{
-    connection::Connection,
+    // connection::Connection,
     elf::FirmwareImage,
     error::Error,
     flasher::{FlashData, FlashFrequency, SpiAttachParams, FLASH_WRITE_SIZE},
@@ -73,6 +77,7 @@ pub enum Chip {
 }
 
 impl Chip {
+    #[cfg(feature = "serialport")]
     pub fn from_magic(magic: u32) -> Result<Self, Error> {
         if Esp32::has_magic_value(magic) {
             Ok(Chip::Esp32)
@@ -111,6 +116,7 @@ impl Chip {
         }
     }
 
+    #[cfg(feature = "serialport")]
     pub fn flash_target(
         &self,
         spi_params: SpiAttachParams,
@@ -124,6 +130,7 @@ impl Chip {
         }
     }
 
+    #[cfg(feature = "serialport")]
     pub fn ram_target(
         &self,
         entry: Option<u32>,
@@ -256,6 +263,7 @@ pub trait ReadEFuse {
     /// Returns the base address of the eFuse register
     fn efuse_reg(&self) -> u32;
 
+    #[cfg(feature = "serialport")]
     /// Given an active connection, read the nth word of the eFuse region
     fn read_efuse(&self, connection: &mut Connection, n: u32) -> Result<u32, Error> {
         let reg = self.efuse_reg() + (n * 0x4);
@@ -268,9 +276,11 @@ pub trait Target: ReadEFuse {
     /// Is the provided address `addr` in flash?
     fn addr_is_flash(&self, addr: u32) -> bool;
 
+    #[cfg(feature = "serialport")]
     /// Enumerate the chip's features, read from eFuse
     fn chip_features(&self, connection: &mut Connection) -> Result<Vec<&str>, Error>;
 
+    #[cfg(feature = "serialport")]
     /// Determine the chip's revision number
     fn chip_revision(&self, connection: &mut Connection) -> Result<(u32, u32), Error> {
         let major = self.major_chip_version(connection)?;
@@ -279,10 +289,13 @@ pub trait Target: ReadEFuse {
         Ok((major, minor))
     }
 
+    #[cfg(feature = "serialport")]
     fn major_chip_version(&self, connection: &mut Connection) -> Result<u32, Error>;
 
+    #[cfg(feature = "serialport")]
     fn minor_chip_version(&self, connection: &mut Connection) -> Result<u32, Error>;
 
+    #[cfg(feature = "serialport")]
     /// What is the crystal frequency?
     fn crystal_freq(&self, connection: &mut Connection) -> Result<u32, Error>;
 
@@ -295,6 +308,7 @@ pub trait Target: ReadEFuse {
         HashMap::from(encodings)
     }
 
+    #[cfg(feature = "serialport")]
     /// Write size for flashing operations
     fn flash_write_size(&self, _connection: &mut Connection) -> Result<usize, Error> {
         Ok(FLASH_WRITE_SIZE)
@@ -308,6 +322,7 @@ pub trait Target: ReadEFuse {
         chip_revision: Option<(u32, u32)>,
     ) -> Result<Box<dyn ImageFormat<'a> + 'a>, Error>;
 
+    #[cfg(feature = "serialport")]
     /// What is the MAC address?
     fn mac_address(&self, connection: &mut Connection) -> Result<String, Error> {
         let word5 = self.read_efuse(connection, 17)?;
@@ -320,6 +335,7 @@ pub trait Target: ReadEFuse {
         Ok(bytes_to_mac_addr(bytes))
     }
 
+    #[cfg(feature = "serialport")]
     /// Maximum RAM block size for writing
     fn max_ram_block_size(&self, _connection: &mut Connection) -> Result<usize, Error> {
         Ok(MAX_RAM_BLOCK_SIZE)

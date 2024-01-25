@@ -2,12 +2,14 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::{
     command::{Command, CommandType},
-    connection::Connection,
+    // connection::Connection,
     elf::RomSegment,
     error::Error,
     flasher::ProgressCallbacks,
-    targets::FlashTarget,
+    // targets::FlashTarget,
 };
+#[cfg(feature = "serialport")]
+use crate::{connection::Connection, targets::FlashTarget};
 
 pub(crate) const MAX_RAM_BLOCK_SIZE: usize = 0x1800;
 
@@ -18,6 +20,7 @@ struct EntryParams {
     entry: u32,
 }
 
+// #[cfg(feature = "serialport")]
 /// Applications running in the target device's RAM
 pub struct RamTarget {
     entry: Option<u32>,
@@ -36,6 +39,7 @@ impl Default for RamTarget {
     }
 }
 
+#[cfg(feature = "serialport")]
 impl FlashTarget for RamTarget {
     fn begin(&mut self, _connection: &mut Connection) -> Result<(), Error> {
         Ok(())
