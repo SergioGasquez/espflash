@@ -1150,13 +1150,13 @@ dependencies = [
 [[package]]
 name = "esp-idf-part"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59f50b6c32370067087b46087cd5333f2dfe678f0b01223fa70fde6f15449844"
+source = "git+https://github.com/SergioGasquez/esp-idf-part?branch=feat/miette#9a1998d2041ede9acce0ce7ee2f5c403527e6c49"
 dependencies = [
  "csv",
  "deku",
  "heapless 0.8.0",
  "md5",
+ "miette",
  "parse_int",
  "regex",
  "serde",
