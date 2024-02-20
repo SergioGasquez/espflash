@@ -472,6 +472,34 @@ impl SpiAttachParams {
         }
     }
 
+    // https://docs.espressif.com/projects/esptool/en/latest/esp32c2/advanced-topics/serial-protocol.html#spi-attach-command
+    // Check
+    // Datasheet- Table5-3: https://www.espressif.com/sites/default/files/documentation/esp8684_technical_reference_manual_en.pdf
+    // https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp8684/esp8684-devkitm-1/user_guide-v1.0.html
+    // > The “Default SPI flash interface” uses pins configured via the SPI_PAD_CONFIG_xxx efuses (if unset, these efuses are all zero and the default SPI flash pins given in the datasheet are used.)
+    // Default SPI parameters for ESP8684-DevKitM-1 v1.0
+
+    // SPI Pins from Datasheet Table 5-3
+    pub const fn esp8264_devkitm_1() -> Self {
+        SpiAttachParams {
+            clk: 15,
+            q: 17,
+            d: 16,
+            hd: 12,
+            cs: 14,
+        }
+    }
+    // FSPI Pins from Datasheet Table 5-3
+    // pub const fn esp8264_devkitm_1() -> Self {
+    //     SpiAttachParams {
+    //         clk: 6,
+    //         q: 2,
+    //         d: 7,
+    //         hd: 4,
+    //         cs: 10,
+    //     }
+    // }
+
     /// Encode the parameters into a byte array
     pub fn encode(self, stub: bool) -> Vec<u8> {
         let packed = ((self.hd as u32) << 24)
@@ -491,8 +519,11 @@ impl SpiAttachParams {
 }
 
 /// List of SPI parameters to try while detecting flash size
-const TRY_SPI_PARAMS: [SpiAttachParams; 2] =
-    [SpiAttachParams::default(), SpiAttachParams::esp32_pico_d4()];
+const TRY_SPI_PARAMS: [SpiAttachParams; 3] = [
+    SpiAttachParams::default(),
+    SpiAttachParams::esp32_pico_d4(),
+    SpiAttachParams::esp8264_devkitm_1(),
+];
 
 /// Information about the connected device
 #[derive(Debug, Clone)]
