@@ -27,7 +27,7 @@ thiserror = "1.0.56"
 toml = "0.8.10"
 
 [target.'cfg(unix)'.dependencies]
-cargo = { version = "0.76.0", features = ["vendored-openssl"] }
+cargo = { version = "0.77.0", features = ["vendored-openssl"] }
 
 [target.'cfg(windows)'.dependencies]
-cargo = "0.76.0"
+cargo = "0.77.0"
