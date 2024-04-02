@@ -429,8 +429,8 @@ pub fn serial_monitor(args: MonitorArgs, config: &Config) -> Result<()> {
     let chip = flasher.chip();
     let target = chip.into_target();
 
-    // The 26MHz ESP32-C2's need to be treated as a special case.
-    let default_baud = if chip == Chip::Esp32c2
+    // The 26MHz ESP32's and ESP32-C2's need to be treated as a special case.
+    let default_baud = if (chip == Chip::Esp32c2 || chip == Chip::Esp32)
         && target.crystal_freq(flasher.connection())? == XtalFrequency::_26Mhz
     {
         // 115_200 * 26 MHz / 40 MHz = 74_880
