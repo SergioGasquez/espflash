@@ -7,7 +7,7 @@ use esp_idf_part::{Partition, PartitionTable, Type};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    elf::{CodeSegment, FirmwareImage, RomSegment},
+    elf::{get_memory_types, CodeSegment, FirmwareImage, RomSegment},
     error::Error,
     flasher::{FlashFrequency, FlashMode, FlashSettings, FlashSize},
     targets::{Chip, Esp32Params},
@@ -106,17 +106,29 @@ struct SegmentHeader {
 #[repr(C, packed)]
 #[doc(alias = "esp_app_desc_t")]
 struct AppDesc {
+    /// Magic word
     magic_word: u32,
+    /// Secure version
     secure_version: u32,
+    /// Reserved
     reserv1: [u32; 2],
+    /// Aplication version
     version: [u8; 32],
+    /// Project name
     project_name: [u8; 32],
+    /// Compile time
     time: [u8; 16],
+    /// Compile date
     date: [u8; 16],
+    /// IDF version
     idf_ver: [u8; 32],
+    /// SHA256 hash of the ELF file
     app_elf_sha256: [u8; 32],
+    // /// Minimal eFuse block revision supported by image, in format: major * 100 + minor
     min_efuse_blk_rev_full: u16,
+    // /// Maximal eFuse block revision supported by image, in format: major * 100 + minor
     max_efuse_blk_rev_full: u16,
+    /// Reserved
     reserv2: [u32; 19],
 }
 
@@ -219,6 +231,47 @@ impl<'a> IdfBootloaderFormat<'a> {
         let mut checksum = ESP_CHECKSUM_MAGIC;
         let mut segment_count = 0;
 
+        println!("Flash segments: {:x?}", flash_segments);
+        println!("RAM segments: {:x?}", ram_segments);
+
+        let memory_types: Vec<&str> = get_memory_types(image);
+        println!("Memory types: {:?}", memory_types);
+
+        let version_str = "v5.4-dev-3951-g9106c43accd";
+        let mut version_bytes = [0u8; 32];
+        version_bytes[..version_str.len().min(32)]
+            .copy_from_slice(&version_str.as_bytes()[..version_str.len().min(32)]);
+
+        let project_name_str = "hello_world";
+        let mut project_name_bytes = [0u8; 32];
+        project_name_bytes[..project_name_str.len().min(32)]
+            .copy_from_slice(&project_name_str.as_bytes()[..project_name_str.len().min(32)]);
+
+        let time_str = "11:57:13";
+        let mut time_bytes = [0u8; 16];
+        time_bytes[..time_str.len().min(16)]
+            .copy_from_slice(&time_str.as_bytes()[..time_str.len().min(16)]);
+
+        let date_str = "Oct 30 2024";
+        let mut date_bytes = [0u8; 16];
+        date_bytes[..date_str.len().min(16)]
+            .copy_from_slice(&date_str.as_bytes()[..date_str.len().min(16)]);
+
+        let app_desc = AppDesc {
+            magic_word: ESP_APP_DESC_MAGIC_WORD,
+            secure_version: 0,
+            version: version_bytes,
+            project_name: project_name_bytes,
+            time: time_bytes,
+            date: date_bytes,
+            idf_ver: version_bytes,
+            // TODO: Calculate the SHA256 hash of the ELF file
+            app_elf_sha256: [3u8; 32],
+            min_efuse_blk_rev_full: 0,
+            max_efuse_blk_rev_full: 58,
+            ..Default::default()
+        };
+
         for segment in flash_segments {
             loop {
                 let pad_len = get_segment_padding(data.len(), &segment);
@@ -252,8 +305,23 @@ impl<'a> IdfBootloaderFormat<'a> {
                     break;
                 }
             }
+            // If its the first segment, write the app descriptor
+            if segment_count == 0 {
+                let padding = (4 - segment.size() % 4) % 4;
 
-            checksum = save_flash_segment(&mut data, segment, checksum)?;
+                let pad_header = SegmentHeader {
+                    addr: segment.addr,
+                    length: segment.size() + padding,
+                };
+                data.write_all(bytes_of(&pad_header))?;
+                data.write_all(bytes_of(&app_desc))?;
+
+                let padding: &[u8] = &[0u8; 4][0..padding as usize];
+                data.write_all(padding)?;
+                checksum = update_checksum(bytes_of(&app_desc), checksum);
+            } else {
+                checksum = save_flash_segment(&mut data, segment, checksum)?;
+            }
             segment_count += 1;
         }
 

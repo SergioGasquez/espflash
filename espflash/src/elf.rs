@@ -259,3 +259,16 @@ impl<'a> From<CodeSegment<'a>> for RomSegment<'a> {
         }
     }
 }
+
+pub fn get_memory_types<'a>(image: &'a dyn FirmwareImage<'a>) -> Vec<&'a str> {
+    let mut memory_type = Vec::new();
+    let chip = Chip::Esp32c3;
+    for segment in image.segments() {
+        if chip.into_target().addr_is_flash(segment.addr) {
+            memory_type.push("flash");
+        } else {
+            memory_type.push("ram");
+        }
+    }
+    memory_type
+}
