@@ -971,6 +971,7 @@ impl Flasher {
             flash_data,
             chip_revision,
             xtal_freq,
+            elf_data,
         )?;
 
         // When the `cli` feature is enabled, display the image size information.

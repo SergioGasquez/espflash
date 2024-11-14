@@ -124,9 +124,9 @@ struct AppDesc {
     idf_ver: [u8; 32],
     /// SHA256 hash of the ELF file
     app_elf_sha256: [u8; 32],
-    // /// Minimal eFuse block revision supported by image, in format: major * 100 + minor
+    /// Minimal eFuse block revision supported by image, in format: major * 100 + minor
     min_efuse_blk_rev_full: u16,
-    // /// Maximal eFuse block revision supported by image, in format: major * 100 + minor
+    /// Maximal eFuse block revision supported by image, in format: major * 100 + minor
     max_efuse_blk_rev_full: u16,
     /// Reserved
     reserv2: [u32; 19],
@@ -175,6 +175,7 @@ impl<'a> IdfBootloaderFormat<'a> {
         target_app_partition: Option<String>,
         bootloader: Option<Vec<u8>>,
         flash_settings: FlashSettings,
+        elf_data: &'a [u8],
     ) -> Result<Self, Error> {
         let partition_table = partition_table.unwrap_or_else(|| {
             params.default_partition_table(flash_settings.size.map(|v| v.size()))
@@ -257,6 +258,13 @@ impl<'a> IdfBootloaderFormat<'a> {
         date_bytes[..date_str.len().min(16)]
             .copy_from_slice(&date_str.as_bytes()[..date_str.len().min(16)]);
 
+        // Get the sha256 hash of the ELF file
+        let mut hasher = Sha256::new();
+        hasher.update(&elf_data);
+        let hash = hasher.finalize();
+        let mut elf_sha256 = [0u8; 32];
+        elf_sha256.copy_from_slice(&hash);
+
         let app_desc = AppDesc {
             magic_word: ESP_APP_DESC_MAGIC_WORD,
             secure_version: 0,
@@ -265,8 +273,7 @@ impl<'a> IdfBootloaderFormat<'a> {
             time: time_bytes,
             date: date_bytes,
             idf_ver: version_bytes,
-            // TODO: Calculate the SHA256 hash of the ELF file
-            app_elf_sha256: [3u8; 32],
+            app_elf_sha256: elf_sha256,
             min_efuse_blk_rev_full: 0,
             max_efuse_blk_rev_full: 58,
             ..Default::default()

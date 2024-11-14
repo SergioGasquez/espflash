@@ -345,6 +345,7 @@ pub trait Target: ReadEFuse {
         flash_data: FlashData,
         chip_revision: Option<(u32, u32)>,
         xtal_freq: XtalFrequency,
+        elf_data: &'a [u8],
     ) -> Result<IdfBootloaderFormat<'a>, Error>;
 
     #[cfg(feature = "serialport")]

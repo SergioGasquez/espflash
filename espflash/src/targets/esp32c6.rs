@@ -77,6 +77,7 @@ impl Target for Esp32c6 {
         flash_data: FlashData,
         _chip_revision: Option<(u32, u32)>,
         xtal_freq: XtalFrequency,
+        elf_data: &'a [u8],
     ) -> Result<IdfBootloaderFormat<'a>, Error> {
         if xtal_freq != XtalFrequency::_40Mhz {
             return Err(Error::UnsupportedFeature {
@@ -95,6 +96,7 @@ impl Target for Esp32c6 {
             flash_data.target_app_partition,
             flash_data.bootloader,
             flash_data.flash_settings,
+            &elf_data,
         )
     }
 
