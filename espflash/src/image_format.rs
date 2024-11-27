@@ -318,18 +318,19 @@ impl<'a> IdfBootloaderFormat<'a> {
 
                 let pad_header = SegmentHeader {
                     addr: segment.addr,
-                    length: segment.size() + padding,
+                    length: segment.size() + padding + size_of::<AppDesc>() as u32,
                 };
                 data.write_all(bytes_of(&pad_header))?;
                 data.write_all(bytes_of(&app_desc))?;
-
-                let padding: &[u8] = &[0u8; 4][0..padding as usize];
-                data.write_all(padding)?;
                 checksum = update_checksum(bytes_of(&app_desc), checksum);
+                data.write_all(segment.data())?;
+                checksum = update_checksum(segment.data(), checksum);
+                let padding: &[u8] = &(&[0u8; 4])[0..padding as usize];
+                data.write_all(padding)?;
+                checksum = update_checksum(padding, checksum);
             } else {
                 checksum = save_flash_segment(&mut data, segment, checksum)?;
             }
-            segment_count += 1;
         }
 
         for segment in ram_segments {
@@ -342,6 +343,7 @@ impl<'a> IdfBootloaderFormat<'a> {
         data.write_all(padding)?;
 
         data.write_all(&[checksum])?;
+        println!("Checksum: 0x{:x?}", checksum);
 
         // since we added some dummy segments, we need to patch the segment count
         data[1] = segment_count as u8;
