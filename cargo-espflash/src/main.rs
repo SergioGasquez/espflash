@@ -569,7 +569,7 @@ fn save_image(args: SaveImageArgs, config: &Config) -> Result<()> {
     println!("Skip padding:      {}", args.save_image_args.skip_padding);
 
     let flash_data = make_flash_data(
-        args.save_image_args.image,
+        &args.save_image_args.image,
         &args.build_args.flash_config_args,
         config,
         build_ctx.bootloader_path.as_deref(),

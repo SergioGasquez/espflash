@@ -127,7 +127,7 @@ struct FlashArgs {
     image: PathBuf,
 }
 
-#[derive(Debug, Args, Clone)]
+#[derive(Debug, Args)]
 #[non_exhaustive]
 struct SaveImageArgs {
     /// ELF image

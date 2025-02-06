@@ -122,7 +122,7 @@ pub struct EraseRegionArgs {
 }
 
 /// Configure communication with the target device's flash
-#[derive(Debug, Args, Clone, Copy)]
+#[derive(Debug, Args)]
 #[non_exhaustive]
 pub struct FlashConfigArgs {
     /// Flash frequency
@@ -210,7 +210,7 @@ pub struct ReadFlashArgs {
 }
 
 /// Save the image to disk instead of flashing to device
-#[derive(Debug, Args, Clone)]
+#[derive(Debug, Args)]
 #[non_exhaustive]
 #[group(skip)]
 pub struct SaveImageArgs {
@@ -235,7 +235,7 @@ pub struct SaveImageArgs {
     pub image: ImageArgs,
 }
 
-#[derive(Debug, Args, Clone)]
+#[derive(Debug, Args)]
 #[non_exhaustive]
 #[group(skip)]
 pub struct ImageArgs {
