@@ -122,7 +122,7 @@ pub struct EraseRegionArgs {
 }
 
 /// Configure communication with the target device's flash
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone, Copy)]
 #[non_exhaustive]
 pub struct FlashConfigArgs {
     /// Flash frequency
@@ -210,7 +210,7 @@ pub struct ReadFlashArgs {
 }
 
 /// Save the image to disk instead of flashing to device
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 #[non_exhaustive]
 #[group(skip)]
 pub struct SaveImageArgs {
@@ -225,6 +225,9 @@ pub struct SaveImageArgs {
     /// Don't pad the image to the flash size
     #[arg(long, requires = "merge")]
     pub skip_padding: bool,
+    /// Pad image to 64KB, so once signed its signature sector willstart at the next 64K block. For Secure Boot v2 images only
+    #[arg(long)]
+    pub secure_pad_v2: bool,
     /// Cristal frequency of the target
     #[arg(long, short = 'x')]
     pub xtal_freq: Option<XtalFrequency>,
@@ -232,7 +235,7 @@ pub struct SaveImageArgs {
     pub image: ImageArgs,
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 #[non_exhaustive]
 #[group(skip)]
 pub struct ImageArgs {
@@ -574,21 +577,24 @@ pub fn serial_monitor(args: MonitorArgs, config: &Config) -> Result<()> {
 /// Convert the provided firmware image from ELF to binary
 pub fn save_elf_as_image(
     elf_data: &[u8],
-    chip: Chip,
-    image_path: PathBuf,
+    save_image_args: SaveImageArgs,
     flash_data: FlashData,
-    merge: bool,
-    skip_padding: bool,
-    xtal_freq: XtalFrequency,
 ) -> Result<()> {
     let image = ElfFirmwareImage::try_from(elf_data)?;
 
-    if merge {
+    let xtal_freq = save_image_args
+        .xtal_freq
+        .unwrap_or(XtalFrequency::default(save_image_args.chip));
+
+    if save_image_args.merge {
         // To get a chip revision, the connection is needed
         // For simplicity, the revision None is used
-        let image =
-            chip.into_target()
-                .get_flash_image(&image, flash_data.clone(), None, xtal_freq)?;
+        let image = save_image_args.chip.into_target().get_flash_image(
+            &image,
+            flash_data.clone(),
+            None,
+            xtal_freq,
+        )?;
 
         display_image_size(image.app_size(), image.part_size());
 
@@ -596,7 +602,7 @@ pub fn save_elf_as_image(
             .write(true)
             .truncate(true)
             .create(true)
-            .open(image_path)
+            .open(save_image_args.file)
             .into_diagnostic()?;
 
         for segment in image.flash_segments() {
@@ -609,7 +615,7 @@ pub fn save_elf_as_image(
             file.write_all(&segment.data).into_diagnostic()?;
         }
 
-        if !skip_padding {
+        if !save_image_args.skip_padding {
             // Take flash_size as input parameter, if None, use default value of 4Mb
             let padding_bytes = vec![
                 0xffu8;
@@ -620,7 +626,8 @@ pub fn save_elf_as_image(
             file.write_all(&padding_bytes).into_diagnostic()?;
         }
     } else {
-        let image = chip
+        let image = save_image_args
+            .chip
             .into_target()
             .get_flash_image(&image, flash_data, None, xtal_freq)?;
 
@@ -628,13 +635,27 @@ pub fn save_elf_as_image(
 
         let parts = image.ota_segments().collect::<Vec<_>>();
         match parts.as_slice() {
-            [single] => fs::write(&image_path, &single.data).into_diagnostic()?,
+            [single] => fs::write(&save_image_args.file, &single.data).into_diagnostic()?,
             parts => {
                 for part in parts {
-                    let part_path = format!("{:#x}_{}", part.addr, image_path.display());
+                    let part_path = format!("{:#x}_{}", part.addr, save_image_args.file.display());
                     fs::write(part_path, &part.data).into_diagnostic()?
                 }
             }
+        }
+
+        // If secure padding is enabled, pad the image to 64KB multiple
+        if save_image_args.secure_pad_v2 {
+            let current_size: u64 = fs::metadata(&save_image_args.file).into_diagnostic()?.len();
+            println!("Current size: {}", current_size);
+            let padding_size = 64 * 1024 - (current_size % (64 * 1024));
+            let padding_bytes = vec![0xffu8; padding_size as usize];
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(save_image_args.file)
+                .into_diagnostic()?;
+            file.write_all(&padding_bytes).into_diagnostic()?;
         }
     }
 
@@ -933,7 +954,7 @@ pub fn make_flash_settings(flash_config_args: &FlashConfigArgs, config: &Config)
 }
 
 pub fn make_flash_data(
-    image_args: ImageArgs,
+    image_args: &ImageArgs,
     flash_config_args: &FlashConfigArgs,
     config: &Config,
     default_bootloader: Option<&Path>,
@@ -966,7 +987,7 @@ pub fn make_flash_data(
         bootloader,
         partition_table,
         partition_table_offset,
-        image_args.target_app_partition,
+        image_args.target_app_partition.clone(),
         flash_settings,
         image_args.min_chip_rev,
     )

@@ -127,7 +127,7 @@ struct FlashArgs {
     image: PathBuf,
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 #[non_exhaustive]
 struct SaveImageArgs {
     /// ELF image
@@ -265,7 +265,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
         flasher.load_elf_to_ram(&elf_data, Some(&mut EspflashProgress::default()))?;
     } else {
         let flash_data = make_flash_data(
-            args.flash_args.image,
+            &args.flash_args.image,
             &args.flash_config_args,
             config,
             None,
@@ -317,27 +317,14 @@ fn save_image(args: SaveImageArgs, config: &Config) -> Result<()> {
     println!("Skip padding:      {}", args.save_image_args.skip_padding);
 
     let flash_data = make_flash_data(
-        args.save_image_args.image,
+        &args.save_image_args.image,
         &args.flash_config_args,
         config,
         None,
         None,
     )?;
 
-    let xtal_freq = args
-        .save_image_args
-        .xtal_freq
-        .unwrap_or(XtalFrequency::default(args.save_image_args.chip));
-
-    save_elf_as_image(
-        &elf_data,
-        args.save_image_args.chip,
-        args.save_image_args.file,
-        flash_data,
-        args.save_image_args.merge,
-        args.save_image_args.skip_padding,
-        xtal_freq,
-    )?;
+    save_elf_as_image(&elf_data, args.save_image_args, flash_data)?;
 
     Ok(())
 }

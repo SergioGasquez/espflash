@@ -576,20 +576,7 @@ fn save_image(args: SaveImageArgs, config: &Config) -> Result<()> {
         build_ctx.partition_table_path.as_deref(),
     )?;
 
-    let xtal_freq = args
-        .save_image_args
-        .xtal_freq
-        .unwrap_or(XtalFrequency::default(args.save_image_args.chip));
-
-    save_elf_as_image(
-        &elf_data,
-        args.save_image_args.chip,
-        args.save_image_args.file,
-        flash_data,
-        args.save_image_args.merge,
-        args.save_image_args.skip_padding,
-        xtal_freq,
-    )?;
+    save_elf_as_image(&elf_data, args.save_image_args, flash_data)?;
 
     Ok(())
 }
