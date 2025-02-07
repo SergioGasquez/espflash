@@ -331,7 +331,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
         flasher.load_elf_to_ram(&elf_data, Some(&mut EspflashProgress::default()))?;
     } else {
         let flash_data = make_flash_data(
-            args.flash_args.image,
+            &args.flash_args.image,
             &args.build_args.flash_config_args,
             config,
             build_ctx.bootloader_path.as_deref(),

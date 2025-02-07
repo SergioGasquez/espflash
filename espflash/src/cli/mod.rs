@@ -651,7 +651,6 @@ pub fn save_elf_as_image(
             let padding_size = 64 * 1024 - (current_size % (64 * 1024));
             let padding_bytes = vec![0xffu8; padding_size as usize];
             let mut file = fs::OpenOptions::new()
-                .write(true)
                 .append(true)
                 .open(save_image_args.file)
                 .into_diagnostic()?;
