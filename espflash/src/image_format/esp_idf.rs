@@ -724,8 +724,24 @@ fn merge_adjacent_segments(mut segments: Vec<Segment<'_>>) -> Vec<Segment<'_>> {
             // aligned.
             let max_padding = (4 - last_end % 4) % 4;
             if last_end + max_padding >= segment.addr {
-                *last += &[0u8; 4][..(segment.addr - last_end) as usize];
-                *last += segment.data();
+                // There can be either a small gap (<= 3 bytes) or an overlap between the
+                // two segments.
+
+                if segment.addr > last_end {
+                    // Small gap – fill it with zeroes (at most 3 bytes by construction).
+                    let gap = (segment.addr - last_end) as usize;
+                    *last += &[0u8; 4][..gap];
+                    *last += segment.data();
+                } else {
+                    // Overlap – skip the part of `segment` that is already covered by `last`.
+                    let overlap = (last_end - segment.addr) as usize;
+                    if overlap < segment.data().len() {
+                        *last += &segment.data()[overlap..];
+                    }
+                    // If the new segment is fully contained within `last`, we
+                    // can simply ignore it.
+                }
+
                 continue;
             }
         }
