@@ -1089,6 +1089,7 @@ pub fn make_image_format<'a>(
                 args.bootloader.as_deref(),
                 args.partition_table_offset,
                 args.target_app_partition.as_deref(),
+                args.secure_pad_v2,
             )?
         }
     };
@@ -1103,7 +1104,6 @@ pub fn make_flash_data(
     config: &Config,
     chip: Chip,
     xtal_freq: XtalFrequency,
-    secure_pad_v2: bool,
 ) -> FlashData {
     // Create flash settings with precedence
     let mode = flash_config_args
@@ -1125,7 +1125,6 @@ pub fn make_flash_data(
         image_args.mmu_page_size,
         chip,
         xtal_freq,
-        secure_pad_v2,
     )
 }
 

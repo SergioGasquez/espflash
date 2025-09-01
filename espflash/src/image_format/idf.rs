@@ -263,6 +263,7 @@ impl<'a> IdfBootloaderFormat<'a> {
         bootloader_path: Option<&Path>,
         partition_table_offset: Option<u32>,
         target_app_partition: Option<&str>,
+        secure_pad_v2: bool,
     ) -> Result<Self, Error> {
         let elf = ElfFile::parse(elf_data)?;
 
@@ -514,7 +515,7 @@ impl<'a> IdfBootloaderFormat<'a> {
             segment_count += 1;
         }
 
-        if flash_data.secure_pad_v2 {
+        if secure_pad_v2 {
             let current_size = data.len();
             let padding_size = (65536 - ((current_size + 56) % 65536)) % 65536;
             let padding_bytes = vec![0; padding_size];

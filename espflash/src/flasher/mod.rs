@@ -488,8 +488,6 @@ pub struct FlashData {
     pub chip: Chip,
     /// Crystal frequency.
     pub xtal_freq: XtalFrequency,
-    /// Whether to add secure boot V2 padding.
-    pub secure_pad_v2: bool,
 }
 
 impl FlashData {
@@ -500,7 +498,6 @@ impl FlashData {
         mmu_page_size: Option<u32>,
         chip: Chip,
         xtal_freq: XtalFrequency,
-        secure_pad_v2: bool,
     ) -> Self {
         FlashData {
             flash_settings,
@@ -508,7 +505,6 @@ impl FlashData {
             mmu_page_size,
             chip,
             xtal_freq,
-            secure_pad_v2,
         }
     }
 }

@@ -286,7 +286,6 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             config,
             chip,
             target_xtal_freq,
-            args.idf_format_args.secure_pad_v2,
         );
         let image_format = make_image_format(
             &elf_data,
@@ -371,7 +370,6 @@ fn save_image(args: SaveImageArgs, config: &Config) -> Result<()> {
         config,
         args.save_image_args.chip,
         xtal_freq,
-        args.idf_format_args.secure_pad_v2,
     );
     let image_format = make_image_format(
         &elf_data,
