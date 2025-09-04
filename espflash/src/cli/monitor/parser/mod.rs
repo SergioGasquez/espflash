@@ -20,11 +20,7 @@ pub trait InputParser {
 // Pattern to much a function address in serial output.
 static RE_FN_ADDR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"0[xX][[:xdigit:]]{8}").unwrap());
 
-fn resolve_addresses(
-    symbols: &Symbols<'_>,
-    line: &str,
-    out: &mut dyn Write,
-) -> std::io::Result<()> {
+fn resolve_addresses(symbols: &Symbols, line: &str, out: &mut dyn Write) -> std::io::Result<()> {
     // Check the previous line for function addresses. For each address found,
     // attempt to look up the associated function's name and location and write both
     // to the terminal.
@@ -106,16 +102,16 @@ impl Utf8Merger {
 
 /// A printer that resolves symbol names and writes formatted output.
 #[allow(missing_debug_implementations)]
-pub struct ResolvingPrinter<'ctx, W: Write> {
+pub struct ResolvingPrinter<W: Write> {
     writer: W,
-    symbols: Option<Symbols<'ctx>>,
+    symbols: Option<Symbols>,
     merger: Utf8Merger,
     line_fragment: String,
 }
 
-impl<'ctx, W: Write> ResolvingPrinter<'ctx, W> {
+impl<W: Write> ResolvingPrinter<W> {
     /// Creates a new `ResolvingPrinter` with the given ELF file and writer.
-    pub fn new(elf: Option<&'ctx [u8]>, writer: W) -> Self {
+    pub fn new(elf: Option<&[u8]>, writer: W) -> Self {
         Self {
             writer,
             symbols: elf.and_then(|elf| Symbols::try_from(elf).ok()),
@@ -125,7 +121,7 @@ impl<'ctx, W: Write> ResolvingPrinter<'ctx, W> {
     }
 }
 
-impl<W: Write> Write for ResolvingPrinter<'_, W> {
+impl<W: Write> Write for ResolvingPrinter<W> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let text = self.merger.process_utf8(buf);
 
