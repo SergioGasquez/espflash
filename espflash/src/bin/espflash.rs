@@ -208,7 +208,7 @@ fn erase_parts(args: ErasePartsArgs, config: &Config) -> Result<()> {
         return Err(Error::StubRequired.into());
     }
 
-    let mut flasher = connect(&args.connect_args, config, false, false)?;
+    let (mut flasher, mut connection) = connect(&args.connect_args, config, false, false)?;
     let chip = flasher.chip();
     let partition_table = match args.partition_table {
         Some(path) => Some(parse_partition_table(&path)?),
@@ -217,10 +217,14 @@ fn erase_parts(args: ErasePartsArgs, config: &Config) -> Result<()> {
 
     info!("Erasing the following partitions: {:?}", args.erase_parts);
 
-    erase_partitions(&mut flasher, partition_table, Some(args.erase_parts), None)?;
-    flasher
-        .connection()
-        .reset_after(!args.connect_args.no_stub, chip)?;
+    erase_partitions(
+        &mut flasher,
+        &mut connection,
+        partition_table,
+        Some(args.erase_parts),
+        None,
+    )?;
+    connection.reset_after(!args.connect_args.no_stub, chip)?;
 
     info!("Specified partitions successfully erased!");
 
@@ -241,13 +245,13 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
         &args.flash_args.erase_data_parts,
     )?;
 
-    let mut flasher = connect(
+    let (mut flasher, mut connection) = connect(
         &args.connect_args,
         config,
         args.flash_args.no_verify,
         args.flash_args.no_skip,
     )?;
-    flasher.verify_minimum_revision(args.flash_args.image.min_chip_rev)?;
+    flasher.verify_minimum_revision(&mut connection, args.flash_args.image.min_chip_rev)?;
 
     // If the user has provided a flash size via a command-line argument, we'll
     // override the detected (or default) value with this.
@@ -258,7 +262,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
     }
 
     let chip = flasher.chip();
-    let target_xtal_freq = chip.xtal_frequency(flasher.connection())?;
+    let target_xtal_freq = chip.xtal_frequency(&mut connection)?;
 
     // Read the ELF data from the build path and load it to the target.
     let elf_data = fs::read(&args.image).into_diagnostic()?;
@@ -267,18 +271,18 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
         check_idf_bootloader(&elf_data)?;
     }
 
-    print_board_info(&mut flasher)?;
+    print_board_info(&mut flasher, &mut connection)?;
     ensure_chip_compatibility(chip, Some(elf_data.as_slice()))?;
 
     let mut flash_config = args.flash_config_args;
     flash_config.flash_size = flash_config
         .flash_size // Use CLI argument if provided
         .or(config.project_config.flash.size) // If no CLI argument, try the config file
-        .or_else(|| flasher.flash_detect().ok().flatten()) // Try detecting flash size next
+        .or_else(|| flasher.flash_detect(&mut connection).ok().flatten()) // Try detecting flash size next
         .or_else(|| Some(FlashSize::default())); // Otherwise, use a reasonable default value
 
     if args.flash_args.ram {
-        flasher.load_elf_to_ram(&elf_data, &mut EspflashProgress::default())?;
+        flasher.load_elf_to_ram(&mut connection, &elf_data, &mut EspflashProgress::default())?;
     } else {
         let flash_data = make_flash_data(
             args.flash_args.image,
@@ -302,6 +306,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             if args.flash_args.erase_parts.is_some() || args.flash_args.erase_data_parts.is_some() {
                 erase_partitions(
                     &mut flasher,
+                    &mut connection,
                     Some(idf_format.partition_table()),
                     args.flash_args.erase_parts,
                     args.flash_args.erase_data_parts,
@@ -309,11 +314,11 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             }
         }
 
-        flash_image(&mut flasher, image_format)?;
+        flash_image(&mut flasher, &mut connection, image_format)?;
     }
 
     if args.flash_args.monitor {
-        let pid = flasher.connection().usb_pid();
+        let pid = connection.usb_pid();
 
         // The 26MHz ESP32-C2's need to be treated as a special case.
         if chip == Chip::Esp32c2
@@ -327,7 +332,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
         monitor_args.elf = Some(args.image);
 
         monitor(
-            flasher.into(),
+            connection.into(),
             Some(&elf_data),
             pid,
             monitor_args,

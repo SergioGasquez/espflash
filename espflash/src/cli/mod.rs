@@ -399,7 +399,7 @@ pub fn connect(
     config: &Config,
     no_verify: bool,
     no_skip: bool,
-) -> Result<Flasher> {
+) -> Result<(Flasher, Connection)> {
     if args.before == ResetBeforeOperation::NoReset
         || args.before == ResetBeforeOperation::NoResetNoSync
     {
@@ -447,45 +447,44 @@ pub fn connect(
             .or(config.project_config.baudrate)
             .unwrap_or(115_200),
     );
-    Ok(Flasher::connect(
+    let (flasher, connection) = Flasher::connect(
         connection,
         !args.no_stub,
         !no_verify,
         !no_skip,
         args.chip,
         args.baud.or(config.project_config.baudrate),
-    )?)
+    )?;
+    Ok((flasher, connection))
 }
 
 /// Connect to a target device and print information about its chip
 pub fn board_info(args: &ConnectArgs, config: &Config) -> Result<()> {
-    let mut flasher = connect(args, config, true, true)?;
-    print_board_info(&mut flasher)?;
+    let (mut flasher, mut connection) = connect(args, config, true, true)?;
+    print_board_info(&mut flasher, &mut connection)?;
 
     let chip = flasher.chip();
     if chip != Chip::Esp32 {
-        let security_info = flasher.security_info()?;
+        let security_info = flasher.security_info(&mut connection)?;
         println!("{security_info}");
     } else {
         println!("Security features: None");
     }
 
-    flasher.connection().reset_after(!args.no_stub, chip)?;
+    connection.reset_after(!args.no_stub, chip)?;
 
     Ok(())
 }
 
 /// Connect to a target device and calculate the checksum of the given region
 pub fn checksum_md5(args: &ChecksumMd5Args, config: &Config) -> Result<()> {
-    let mut flasher = connect(&args.connect_args, config, true, true)?;
+    let (mut flasher, mut connection) = connect(&args.connect_args, config, true, true)?;
 
-    let checksum = flasher.checksum_md5(args.address, args.size)?;
+    let checksum = flasher.checksum_md5(&mut connection, args.address, args.size)?;
     println!("0x{checksum:x}");
 
     let chip = flasher.chip();
-    flasher
-        .connection()
-        .reset_after(!args.connect_args.no_stub, chip)?;
+    connection.reset_after(!args.connect_args.no_stub, chip)?;
 
     Ok(())
 }
@@ -604,8 +603,8 @@ pub fn parse_chip_rev(chip_rev: &str) -> Result<u16> {
 }
 
 /// Print information about a chip
-pub fn print_board_info(flasher: &mut Flasher) -> Result<()> {
-    let info = flasher.device_info()?;
+pub fn print_board_info(flasher: &mut Flasher, connection: &mut Connection) -> Result<()> {
+    let info = flasher.device_info(connection)?;
     print!("Chip type:         {}", info.chip);
 
     if let Some((major, minor)) = info.revision {
@@ -627,8 +626,8 @@ pub fn print_board_info(flasher: &mut Flasher) -> Result<()> {
 
 /// Open a serial monitor
 pub fn serial_monitor(args: MonitorArgs, config: &Config) -> Result<()> {
-    let mut flasher = connect(&args.connect_args, config, true, true)?;
-    let pid = flasher.connection().usb_pid();
+    let (flasher, mut connection) = connect(&args.connect_args, config, true, true)?;
+    let pid = connection.usb_pid();
 
     let elf = if let Some(elf_path) = args.monitor_args.elf.clone() {
         let path = fs::canonicalize(elf_path).into_diagnostic()?;
@@ -647,7 +646,7 @@ pub fn serial_monitor(args: MonitorArgs, config: &Config) -> Result<()> {
 
     // The 26MHz ESP32-C2's need to be treated as a special case.
     if chip == Chip::Esp32c2
-        && chip.xtal_frequency(flasher.connection())? == XtalFrequency::_26Mhz
+        && chip.xtal_frequency(&mut connection)? == XtalFrequency::_26Mhz
         && monitor_args.monitor_baud == 115_200
     {
         // 115_200 * 26 MHz / 40 MHz = 74_880
@@ -655,7 +654,7 @@ pub fn serial_monitor(args: MonitorArgs, config: &Config) -> Result<()> {
     }
 
     monitor(
-        flasher.into(),
+        connection.into(),
         elf.as_deref(),
         pid,
         monitor_args,
@@ -804,15 +803,13 @@ pub fn erase_flash(args: EraseFlashArgs, config: &Config) -> Result<()> {
         return Err(Error::StubRequired.into());
     }
 
-    let mut flasher = connect(&args.connect_args, config, true, true)?;
+    let (mut flasher, mut connection) = connect(&args.connect_args, config, true, true)?;
     info!("Erasing Flash...");
 
     let chip = flasher.chip();
 
-    flasher.erase_flash()?;
-    flasher
-        .connection()
-        .reset_after(!args.connect_args.no_stub, chip)?;
+    flasher.erase_flash(&mut connection)?;
+    connection.reset_after(!args.connect_args.no_stub, chip)?;
 
     info!("Flash has been erased!");
 
@@ -833,7 +830,7 @@ pub fn erase_region(args: EraseRegionArgs, config: &Config) -> Result<()> {
         .into_diagnostic();
     }
 
-    let mut flasher = connect(&args.connect_args, config, true, true)?;
+    let (mut flasher, mut connection) = connect(&args.connect_args, config, true, true)?;
     let chip = flasher.chip();
 
     info!(
@@ -841,17 +838,19 @@ pub fn erase_region(args: EraseRegionArgs, config: &Config) -> Result<()> {
         args.address, args.size
     );
 
-    flasher.erase_region(args.address, args.size)?;
-    flasher
-        .connection()
-        .reset_after(!args.connect_args.no_stub, chip)?;
+    flasher.erase_region(&mut connection, args.address, args.size)?;
+    connection.reset_after(!args.connect_args.no_stub, chip)?;
 
     Ok(())
 }
 
 /// Write an ELF image to a target device's flash
-pub fn flash_image<'a>(flasher: &mut Flasher, image_format: ImageFormat<'a>) -> Result<()> {
-    flasher.load_image_to_flash(&mut EspflashProgress::default(), image_format)?;
+pub fn flash_image<'a>(
+    flasher: &mut Flasher,
+    connection: &mut Connection,
+    image_format: ImageFormat<'a>,
+) -> Result<()> {
+    flasher.load_image_to_flash(connection, &mut EspflashProgress::default(), image_format)?;
     info!("Flashing has completed!");
 
     Ok(())
@@ -860,6 +859,7 @@ pub fn flash_image<'a>(flasher: &mut Flasher, image_format: ImageFormat<'a>) -> 
 /// Erase one or more partitions by label or [DataType]
 pub fn erase_partitions(
     flasher: &mut Flasher,
+    connection: &mut Connection,
     partition_table: Option<PartitionTable>,
     erase_parts: Option<Vec<String>>,
     erase_data_parts: Option<Vec<DataType>>,
@@ -905,29 +905,36 @@ pub fn erase_partitions(
     if let Some(parts) = parts_to_erase {
         parts
             .iter()
-            .try_for_each(|(_, p)| erase_partition(flasher, p))?;
+            .try_for_each(|(_, p)| erase_partition(flasher, connection, p))?;
     }
 
     Ok(())
 }
 
 /// Erase a single partition
-fn erase_partition(flasher: &mut Flasher, part: &Partition) -> Result<()> {
+fn erase_partition(
+    flasher: &mut Flasher,
+    connection: &mut Connection,
+    part: &Partition,
+) -> Result<()> {
     log::info!("Erasing {} ({:?})...", part.name(), part.subtype());
 
     let offset = part.offset();
     let size = part.size();
 
-    flasher.erase_region(offset, size).into_diagnostic()
+    flasher
+        .erase_region(connection, offset, size)
+        .into_diagnostic()
 }
 
 /// Read flash content and write it to a file
 pub fn read_flash(args: ReadFlashArgs, config: &Config) -> Result<()> {
-    let mut flasher = connect(&args.connect_args, config, false, false)?;
-    print_board_info(&mut flasher)?;
+    let (mut flasher, mut connection) = connect(&args.connect_args, config, false, false)?;
+    print_board_info(&mut flasher, &mut connection)?;
 
     if args.connect_args.no_stub {
         flasher.read_flash_rom(
+            &mut connection,
             args.address,
             args.size,
             args.block_size,
@@ -936,6 +943,7 @@ pub fn read_flash(args: ReadFlashArgs, config: &Config) -> Result<()> {
         )?;
     } else {
         flasher.read_flash(
+            &mut connection,
             args.address,
             args.size,
             args.block_size,
@@ -945,9 +953,7 @@ pub fn read_flash(args: ReadFlashArgs, config: &Config) -> Result<()> {
     }
 
     let chip = flasher.chip();
-    flasher
-        .connection()
-        .reset_after(!args.connect_args.no_stub, chip)?;
+    connection.reset_after(!args.connect_args.no_stub, chip)?;
 
     Ok(())
 }
@@ -1146,16 +1152,21 @@ pub fn write_bin(args: WriteBinArgs, config: &Config) -> Result<()> {
     f.read_to_end(&mut buffer).into_diagnostic()?;
     buffer.extend(std::iter::repeat_n(0xFF, padded_bytes as usize));
 
-    let mut flasher = connect(&args.connect_args, config, false, false)?;
-    print_board_info(&mut flasher)?;
+    let (mut flasher, mut connection) = connect(&args.connect_args, config, false, false)?;
+    print_board_info(&mut flasher, &mut connection)?;
 
     let chip = flasher.chip();
-    let target_xtal_freq = chip.xtal_frequency(flasher.connection())?;
+    let target_xtal_freq = chip.xtal_frequency(&mut connection)?;
 
-    flasher.write_bin_to_flash(args.address, &buffer, &mut EspflashProgress::default())?;
+    flasher.write_bin_to_flash(
+        &mut connection,
+        args.address,
+        &buffer,
+        &mut EspflashProgress::default(),
+    )?;
 
     if args.monitor {
-        let pid = flasher.connection().usb_pid();
+        let pid = connection.usb_pid();
         let mut monitor_args = args.monitor_args;
         if chip == Chip::Esp32c2
             && target_xtal_freq == XtalFrequency::_26Mhz
@@ -1164,7 +1175,7 @@ pub fn write_bin(args: WriteBinArgs, config: &Config) -> Result<()> {
             monitor_args.monitor_baud = 74_880;
         }
         monitor(
-            flasher.into(),
+            connection.into(),
             None,
             pid,
             monitor_args,
@@ -1179,16 +1190,16 @@ pub fn write_bin(args: WriteBinArgs, config: &Config) -> Result<()> {
 pub fn reset(args: ConnectArgs, config: &Config) -> Result<()> {
     let mut args = args.clone();
     args.no_stub = true;
-    let mut flasher = connect(&args, config, true, true)?;
+    let (_flasher, mut connection) = connect(&args, config, true, true)?;
     info!("Resetting target device");
-    flasher.connection().reset()?;
+    connection.reset()?;
 
     Ok(())
 }
 
 /// Hold the target device in reset.
 pub fn hold_in_reset(args: ConnectArgs, config: &Config) -> Result<()> {
-    connect(&args, config, true, true)?;
+    let (_flasher, _connection) = connect(&args, config, true, true)?;
     info!("Holding target device in reset");
 
     Ok(())
