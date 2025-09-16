@@ -294,7 +294,7 @@ mod linux {
 mod macos {
     use std::time::Duration;
 
-    use libc::{self, c_int, itimerval, sigaction, sigemptyset, timeval, ITIMER_REAL, SIGALRM};
+    use libc::{self, ITIMER_REAL, SIGALRM, c_int, itimerval, sigaction, sigemptyset, timeval};
 
     pub struct Workaround {
         previous_action: sigaction,
@@ -313,8 +313,9 @@ mod macos {
         }
     }
 
-    /// Sets a one-shot interval timer that will deliver SIGALRM after `timeout`.
-    /// The timer and signal handler are restored when the returned object is dropped.
+    /// Sets a one-shot interval timer that will deliver SIGALRM after
+    /// `timeout`. The timer and signal handler are restored when the
+    /// returned object is dropped.
     pub fn arm_timeout_workaround(timeout: Duration) -> Workaround {
         unsafe extern "C" fn handle_signal(_signal: c_int) {}
 
@@ -332,7 +333,10 @@ mod macos {
             // Arm a one-shot real-time interval timer (ITIMER_REAL → SIGALRM)
             let timeout_tv = duration_to_timeval(timeout);
             let new_timer = itimerval {
-                it_interval: timeval { tv_sec: 0, tv_usec: 0 },
+                it_interval: timeval {
+                    tv_sec: 0,
+                    tv_usec: 0,
+                },
                 it_value: timeout_tv,
             };
 
