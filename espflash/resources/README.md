@@ -12,3 +12,7 @@ CONFIG_ESPTOOLPY_FLASHSIZE="64MB"
 
 The flasher stubs are taken from the `espressif/esptool` repository:
 https://github.com/espressif/esptool/tree/master/esptool/targets/stub_flasher/1
+
+
+The roms are taken from the (`esp-rom-elfs`)[https://github.com/espressif/esp-rom-elfs] repository. Expect for:
+- ESP32-P4 rev3: Was built from `esp-rom-elfs` gitlab merge request 30.
