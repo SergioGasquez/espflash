@@ -19,6 +19,8 @@ CONFIG_ESP32P4_REV_MIN_100=y
 The flasher stubs are taken from the `espressif/esptool` repository:
 https://github.com/espressif/esptool/tree/master/esptool/targets/stub_flasher/1
 
+The ESP32-S31 flasher stub is taken from `esptool`'s `stub_flasher/2` directory.
+
 
 The roms are taken from the (`esp-rom-elfs`)[https://github.com/espressif/esp-rom-elfs] repository. Expect for:
 - ESP32-P4 rev3: Was built from `esp-rom-elfs` gitlab merge request 30.

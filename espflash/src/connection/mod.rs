@@ -451,6 +451,15 @@ impl Connection {
                             }
                         }
                     }
+                    Chip::Esp32s31 => {
+                        if !self
+                            .security_info(is_stub)?
+                            .security_flag_status("SECURE_DOWNLOAD_ENABLE")
+                            && chip.is_using_usb_otg(self)?
+                        {
+                            chip.rtc_wdt_reset(self)?;
+                        }
+                    }
                     _ => {
                         return Err(Error::UnsupportedFeature {
                             chip,

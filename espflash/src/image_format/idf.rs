@@ -136,6 +136,10 @@ pub(crate) fn default_bootloader(
             XtalFrequency::_40Mhz => Ok(BOOTLOADER_ESP32S3),
             _ => Err(error),
         },
+        Chip::Esp32s31 => Err(Error::UnsupportedFeature {
+            chip,
+            feature: "the built-in ESP-IDF bootloader".into(),
+        }),
     }
 }
 
@@ -714,6 +718,7 @@ fn default_partition_table(chip: Chip, flash_size: Option<u32>) -> PartitionTabl
         Chip::Esp32p4 => (0x1_0000, 0x3f_0000),
         Chip::Esp32s2 => (0x1_0000, 0x10_0000),
         Chip::Esp32s3 => (0x1_0000, 0x10_0000),
+        Chip::Esp32s31 => (0x1_0000, 0x3f_0000),
     };
 
     PartitionTable::new(vec![

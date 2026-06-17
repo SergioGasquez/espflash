@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `Flasher::try_connect()` as a variant of `Flasher::connect()` that returns the `Connection`
+- Added ESP32-S31 chip support
 
 ### Changed
 
