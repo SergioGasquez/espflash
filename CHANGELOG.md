@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `list-ports` prints USB IDs as `VID:PID` instead of `PID:VID` (#1112)
 - Port names are no longer printed twice on Windows (#1112)
 - Serial commands fail with a timeout once their timeout elapses, instead of hanging when a device stops accepting data or keeps sending unrelated output (#1110)
+- Flash operations on a region that extends past the end of the flash are rejected, instead of wrapping around and e.g. erasing the bootloader with `erase-region`
 
 ### Removed
 
